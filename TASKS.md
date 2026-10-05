@@ -3,7 +3,7 @@
 > Stack: .NET 10 · Raylib-cs · ImGui.NET · rlImGui-cs · System.Text.Json · xUnit v3
 > Architecture: Clean — Editor / Rendering / Infrastructure → Application → Domain
 > เฟส 1–8 = Vertical Slice · เฟส 9+ = หลัง slice ทำงานแล้ว
-> สถานะ (2026-10-05): `dotnet test` 45/45 pass · ค้าง: 6.1, 9.3+
+> สถานะ (2026-10-05): `dotnet test` 49/49 pass · ค้าง: 9.3+
 
 ## เฟส 1: Setup Solution
 
@@ -66,8 +66,8 @@
 
 ## เฟส 6: Paint Tool
 
-- [ ] 6.1 เมาส์ → world → tile + highlight ช่องที่ชี้ (ข้ามถ้า `WantCaptureMouse`)
-  - test: รัน — ขยับเมาส์ highlight ตรงช่อง, เมาส์บน panel ไม่ highlight
+- [x] 6.1 เมาส์ → world → tile + highlight ช่องที่ชี้ (ข้ามถ้า `WantCaptureMouse`)
+  - test: รัน — ขยับเมาส์ highlight ตรงช่อง, เมาส์บน panel ไม่ highlight ✓ user ยืนยัน pass
 - [x] 6.2 คลิก/ลากวาด (กด = BeginStroke, ปล่อย = EndStroke)
   - test: รัน — ลากวาดได้, คลิกบน panel ไม่วาง tile
 - [x] 6.3 Shortcut Ctrl+Z / Ctrl+Y

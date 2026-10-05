@@ -12,8 +12,10 @@ public static class IsoMath
 
     public static Vector2 TileToScreen(TileCoord c) => new((c.X - c.Y) * HalfW, (c.X + c.Y) * HalfH);
 
+    /// <summary>Non-finite input → (int.MinValue, int.MinValue), never in bounds (NaN would cast to 0 = tile (0,0)).</summary>
     public static TileCoord ScreenToTile(Vector2 p)
     {
+        if (!float.IsFinite(p.X) || !float.IsFinite(p.Y)) return new(int.MinValue, int.MinValue);
         float a = p.X / HalfW, b = p.Y / HalfH;
         return new((int)MathF.Floor((b + a) / 2), (int)MathF.Floor((b - a) / 2));
     }

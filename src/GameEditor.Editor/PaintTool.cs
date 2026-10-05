@@ -1,6 +1,7 @@
 using System.Numerics;
 using GameEditor.Application;
 using GameEditor.Domain;
+using GameEditor.Rendering;
 using ImGuiNET;
 using Raylib_cs;
 
@@ -16,6 +17,10 @@ public sealed class PaintTool(MapEditingService service)
     public void Update(Vector2 origin)
     {
         var io = ImGui.GetIO();
+        var hover = IsoMath.ScreenToTile(Raylib.GetMousePosition() - origin);
+
+        if (!io.WantCaptureMouse && service.Map.InBounds(hover))
+            MapRenderer.DrawHighlight(hover, origin, Color.Yellow);
 
         if (!_painting && !io.WantCaptureMouse && Raylib.IsMouseButtonPressed(MouseButton.Left))
         {
@@ -25,7 +30,7 @@ public sealed class PaintTool(MapEditingService service)
 
         if (_painting)
         {
-            service.Paint(IsoMath.ScreenToTile(Raylib.GetMousePosition() - origin), TileId);
+            service.Paint(hover, TileId);
             if (Raylib.IsMouseButtonReleased(MouseButton.Left))
             {
                 service.EndStroke();

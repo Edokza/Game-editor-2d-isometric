@@ -40,4 +40,16 @@ public static class MapRenderer
             Raylib.DrawLineV(top, top + left, Outline);
         }
     }
+
+    public static void DrawHighlight(TileCoord c, Vector2 origin, Color color)
+    {
+        var top = origin + IsoMath.TileToScreen(c);
+        var right = top + new Vector2(IsoMath.TileWidth / 2f, IsoMath.TileHeight / 2f);
+        var left = top + new Vector2(-IsoMath.TileWidth / 2f, IsoMath.TileHeight / 2f);
+        var bottom = top + new Vector2(0, IsoMath.TileHeight);
+        Raylib.DrawLineV(top, right, color);
+        Raylib.DrawLineV(right, bottom, color);
+        Raylib.DrawLineV(bottom, left, color);
+        Raylib.DrawLineV(left, top, color);
+    }
 }

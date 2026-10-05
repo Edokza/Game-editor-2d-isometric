@@ -30,4 +30,12 @@ public class IsoMathTests
     [InlineData(17, 8, 0, -1)]   // above top-right edge -> neighbor (0,-1)
     public void EdgePoints_FallInCorrectTile(float sx, float sy, int x, int y) =>
         Assert.Equal(new TileCoord(x, y), IsoMath.ScreenToTile(new Vector2(sx, sy)));
+
+    [Theory]
+    [InlineData(float.NaN, 0)]
+    [InlineData(0, float.NaN)]
+    [InlineData(float.PositiveInfinity, 0)]
+    [InlineData(0, float.NegativeInfinity)]
+    public void NonFinite_NeverInBounds(float sx, float sy) =>
+        Assert.False(new TileMap(20, 20).InBounds(IsoMath.ScreenToTile(new Vector2(sx, sy))));
 }
