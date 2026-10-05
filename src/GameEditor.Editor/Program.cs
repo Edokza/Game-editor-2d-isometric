@@ -2,6 +2,7 @@ using GameEditor.Application;
 using GameEditor.Domain;
 using GameEditor.Editor;
 using GameEditor.Infrastructure;
+using GameEditor.Rendering;
 using ImGuiNET;
 using Raylib_cs;
 using rlImGui_cs;
@@ -17,6 +18,7 @@ var quit = false;
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow | ConfigFlags.VSyncHint);
 Raylib.InitWindow(1280, 720, "Game Editor");
 Raylib.SetExitKey(KeyboardKey.Null); // Esc must not quit the editor
+Sprites.Load(Path.Combine(AppContext.BaseDirectory, "assets"));
 rlImGui.Setup(true, true);
 ImGui.GetIO().ConfigWindowsMoveFromTitleBarOnly = true; // left-drag in Scene paints, must not move the window
 
@@ -44,7 +46,7 @@ while (!quit)
     fileMenu.DrawPopups();
 
     scenePanel.Draw();
-    PalettePanel.Draw(paintTool);
+    AssetsPanel.Draw(paintTool, service, objectPanels);
     objectPanels.DrawHierarchy();
     objectPanels.DrawInspector();
 
@@ -52,7 +54,8 @@ while (!quit)
     Raylib.EndDrawing();
 }
 
-scenePanel.Dispose(); // GPU resource: free before CloseWindow
+scenePanel.Dispose(); // GPU resources: free before CloseWindow
+Sprites.Unload();
 rlImGui.Shutdown();
 Raylib.CloseWindow();
 

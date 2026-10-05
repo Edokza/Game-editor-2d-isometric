@@ -11,4 +11,7 @@
     <ProjectReference Include="..\GameEditor.Infrastructure\GameEditor.Infrastructure.csproj" />
     <ProjectReference Include="..\GameEditor.Rendering\GameEditor.Rendering.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\assets\**" LinkBase="assets" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

@@ -48,10 +48,10 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
     }
 
     /// <summary>Appends at (<paramref name="x"/>, <paramref name="y"/>) tile space with a fresh id.</summary>
-    public MapObject AddObject(string name, float x, float y)
+    public MapObject AddObject(string name, float x, float y, string? sprite = null)
     {
         Flush();
-        var o = new MapObject(Map.NextObjectId, name, x, y);
+        var o = new MapObject(Map.NextObjectId, name, x, y, sprite);
         Do(new ObjectCommand(Map, Map.Objects.Count, null, o));
         return o;
     }

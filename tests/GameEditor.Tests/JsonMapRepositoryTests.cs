@@ -92,7 +92,7 @@ public sealed class JsonMapRepositoryTests : IDisposable
     public void Objects_RoundTrip()
     {
         var repo = new JsonMapRepository(Folder);
-        MapObject[] objects = [new(3, "tree", 1.5f, 2.25f), new(1, "rock %", -1, 0)];
+        MapObject[] objects = [new(3, "tree", 1.5f, 2.25f, "tree"), new(1, "rock %", -1, 0)];
         repo.Save(new TileMap(1, 1, [0], objects), "a");
 
         Assert.Equal(objects, repo.Load("a").Objects);
@@ -108,5 +108,14 @@ public sealed class JsonMapRepositoryTests : IDisposable
 
         Assert.Equal(2, map.Get(new TileCoord(0, 0)));
         Assert.Empty(map.Objects);
+    }
+
+    [Fact]
+    public void OldObjectWithoutSprite_LoadsNull()
+    {
+        Directory.CreateDirectory(Folder);
+        File.WriteAllText(Path.Combine(Folder, "old.json"), """{"Width":1,"Height":1,"Tiles":[0],"Objects":[{"Id":1,"Name":"a","X":0,"Y":0}]}""");
+
+        Assert.Null(new JsonMapRepository(Folder).Load("old").Objects[0].Sprite);
     }
 }

@@ -33,7 +33,16 @@ public static class MapRenderer
         {
             var c = new TileCoord(x, y);
             var top = origin + IsoMath.TileToScreen(c);
-            var color = ColorOf(map.Get(c));
+            int id = map.Get(c);
+            // row-major = back to front, so a tall block correctly covers the tiles behind it
+            var tex = Sprites.Tile(id);
+            if (tex.Id != 0)
+            {
+                // image bottom center = tile bottom vertex
+                Raylib.DrawTextureV(tex, top + new Vector2(-tex.Width / 2f, IsoMath.TileHeight - tex.Height), Color.White);
+                continue;
+            }
+            var color = ColorOf(id);
             Raylib.DrawTriangle(top, top + left, top + down, color);
             Raylib.DrawTriangle(top, top + down, top + right, color);
             Raylib.DrawLineV(top, top + right, Outline);
@@ -53,12 +62,14 @@ public static class MapRenderer
         Raylib.DrawLineV(left, top, color);
     }
 
-    /// <summary>Placeholder box until sprites: bottom center = object position.</summary>
+    /// <summary>Sprite bounds (24×40 placeholder box without one); bottom center = object position.</summary>
     public static Rectangle ObjectRect(MapObject o, Vector2 origin)
     {
-        const float W = 24, H = 40;
+        var tex = Sprites.Object(o.Sprite);
+        float w = tex.Id != 0 ? tex.Width : 24, h = tex.Id != 0 ? tex.Height : 40;
         var foot = origin + IsoMath.TileToScreen(o.X, o.Y);
-        return new Rectangle(foot.X - W / 2, foot.Y - H, W, H);
+        // floor: odd widths and fractional positions would land texels between screen pixels
+        return new Rectangle(MathF.Floor(foot.X - w / 2), MathF.Floor(foot.Y - h), w, h);
     }
 
     public static void DrawObjects(IReadOnlyList<MapObject> objects, Vector2 origin, int? selectedId)
@@ -66,8 +77,13 @@ public static class MapRenderer
         foreach (var o in DrawOrder(objects))
         {
             var rect = ObjectRect(o, origin);
-            Raylib.DrawRectangleRec(rect, Raylib.ColorFromHSV(o.Id * 67 % 360, 0.6f, 0.9f));
-            Raylib.DrawRectangleLinesEx(rect, 1, Color.Black);
+            var tex = Sprites.Object(o.Sprite);
+            if (tex.Id != 0) Raylib.DrawTextureV(tex, rect.Position, Color.White);
+            else
+            {
+                Raylib.DrawRectangleRec(rect, Raylib.ColorFromHSV(o.Id * 67 % 360, 0.6f, 0.9f));
+                Raylib.DrawRectangleLinesEx(rect, 1, Color.Black);
+            }
             if (o.Id == selectedId) Raylib.DrawRectangleLinesEx(rect, 2, Color.Yellow);
         }
     }

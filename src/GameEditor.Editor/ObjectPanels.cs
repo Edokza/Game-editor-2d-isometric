@@ -1,6 +1,7 @@
 using System.Numerics;
 using GameEditor.Application;
 using GameEditor.Domain;
+using GameEditor.Rendering;
 using ImGuiNET;
 
 namespace GameEditor.Editor;
@@ -60,6 +61,23 @@ public sealed class ObjectPanels(MapEditingService service)
             var pos = new Vector2(o.X, o.Y);
             changed = ImGui.DragFloat2("Position", ref pos, 0.05f);
             Track(o.Id, changed ? o with { X = pos.X, Y = pos.Y } : null);
+
+            o = map.Objects[i];
+            if (ImGui.BeginCombo("Sprite", o.Sprite ?? "(box)"))
+            {
+                var pick = o.Sprite;
+                if (ImGui.Selectable("(box)", o.Sprite is null)) pick = null;
+                foreach (var s in Sprites.Objects.Keys)
+                    if (ImGui.Selectable(s, s == o.Sprite)) pick = s;
+                ImGui.EndCombo();
+                if (pick != o.Sprite)
+                {
+                    // a pick is instant, not a drag: one Begin/Update/End = one undo step
+                    int token = service.BeginObjectEdit(o.Id);
+                    service.UpdateObject(o with { Sprite = pick });
+                    service.EndObjectEdit(token);
+                }
+            }
         }
         ImGui.End();
     }

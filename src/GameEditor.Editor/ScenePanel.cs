@@ -55,7 +55,16 @@ public sealed class ScenePanel(MapEditingService service, PaintTool paintTool, O
         if (hovered && wheel != 0 && float.IsFinite(wheel))
         {
             var before = Raylib.GetScreenToWorld2D(mouse, _camera);
-            _camera.Zoom = Math.Clamp(_camera.Zoom * MathF.Pow(1.1f, wheel), 0.25f, 4f);
+            // ≥1: whole steps so every sprite pixel is the same size on screen; <1: smooth overview
+            // ponytail: one step per wheel event, touchpads with tiny fractional deltas zoom fast; accumulate if that bothers
+            float z = _camera.Zoom;
+            if (z > 1 || (z == 1 && wheel > 0)) z = MathF.Round(z) + MathF.Sign(wheel);
+            else
+            {
+                z *= MathF.Pow(1.1f, wheel);
+                if (z > 0.999f) z = 1; // float drift: 9 steps down then up gives 0.9999998, must still land on exactly 1
+            }
+            _camera.Zoom = Math.Clamp(z, 0.25f, 4f);
             var shift = before - Raylib.GetScreenToWorld2D(mouse, _camera);
             _pan -= shift;
             _camera.Target += shift;
