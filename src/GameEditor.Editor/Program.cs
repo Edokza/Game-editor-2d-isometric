@@ -12,7 +12,8 @@ const int MapSize = 20;
 var service = new MapEditingService(new TileMap(MapSize, MapSize), new JsonMapRepository(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "GameEditor", "maps")));
 var paintTool = new PaintTool(service);
 var fileMenu = new FileMenu(service);
-var pan = Vector2.Zero;
+var pan = Vector2.Zero; // world units, relative to map center
+var camera = new Camera2D { Zoom = 1f };
 var quit = false;
 
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow | ConfigFlags.VSyncHint);
@@ -26,20 +27,35 @@ while (!quit)
 
     // WantCaptureMouse here is from last frame; fine for panning
     if (Raylib.IsMouseButtonDown(MouseButton.Middle) && !ImGui.GetIO().WantCaptureMouse)
-        pan += Raylib.GetMouseDelta();
+        pan += Raylib.GetMouseDelta() / camera.Zoom;
 
     var map = service.Map;
-    // center the map's iso bounding box on screen, then apply pan
-    var origin = pan + new Vector2(
-        Raylib.GetScreenWidth() / 2f - (map.Width - map.Height) * IsoMath.TileWidth / 4f,
-        (Raylib.GetScreenHeight() - (map.Width + map.Height) * IsoMath.TileHeight / 2f) / 2f);
+    // screen center looks at the map's iso bounding box center (tile (0,0) top vertex = world origin), minus pan
+    camera.Offset = new Vector2(Raylib.GetScreenWidth(), Raylib.GetScreenHeight()) / 2f;
+    camera.Target = new Vector2(
+        (map.Width - map.Height) * IsoMath.TileWidth / 4f,
+        (map.Width + map.Height) * IsoMath.TileHeight / 4f) - pan;
+
+    // zoom toward mouse: keep the world point under the cursor fixed
+    float wheel = Raylib.GetMouseWheelMove();
+    if (wheel != 0 && float.IsFinite(wheel) && !ImGui.GetIO().WantCaptureMouse)
+    {
+        var mouse = Raylib.GetMousePosition();
+        var before = Raylib.GetScreenToWorld2D(mouse, camera);
+        camera.Zoom = Math.Clamp(camera.Zoom * MathF.Pow(1.1f, wheel), 0.25f, 4f);
+        var shift = before - Raylib.GetScreenToWorld2D(mouse, camera);
+        pan -= shift;
+        camera.Target += shift;
+    }
 
     Raylib.BeginDrawing();
     Raylib.ClearBackground(new Color(30, 30, 36, 255));
-    MapRenderer.Draw(map, origin);
+    Raylib.BeginMode2D(camera);
+    MapRenderer.Draw(map, Vector2.Zero);
+    Raylib.EndMode2D();
 
     rlImGui.Begin();
-    paintTool.Update(origin);
+    paintTool.Update(camera);
     ImGui.DockSpaceOverViewport(0, ImGui.GetMainViewport(), ImGuiDockNodeFlags.PassthruCentralNode);
 
     if (ImGui.BeginMainMenuBar())

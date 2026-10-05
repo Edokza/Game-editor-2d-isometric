@@ -14,13 +14,17 @@ public sealed class PaintTool(MapEditingService service)
 
     public int TileId { get; set; } = 1;
 
-    public void Update(Vector2 origin)
+    public void Update(Camera2D camera)
     {
         var io = ImGui.GetIO();
-        var hover = IsoMath.ScreenToTile(Raylib.GetMousePosition() - origin);
+        var hover = IsoMath.ScreenToTile(Raylib.GetScreenToWorld2D(Raylib.GetMousePosition(), camera));
 
         if (!io.WantCaptureMouse && service.Map.InBounds(hover))
-            MapRenderer.DrawHighlight(hover, origin, Color.Yellow);
+        {
+            Raylib.BeginMode2D(camera);
+            MapRenderer.DrawHighlight(hover, Vector2.Zero, Color.Yellow);
+            Raylib.EndMode2D();
+        }
 
         if (!_painting && !io.WantCaptureMouse && Raylib.IsMouseButtonPressed(MouseButton.Left))
         {
