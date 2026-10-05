@@ -38,4 +38,15 @@ public class IsoMathTests
     [InlineData(0, float.NegativeInfinity)]
     public void NonFinite_NeverInBounds(float sx, float sy) =>
         Assert.False(new TileMap(20, 20).InBounds(IsoMath.ScreenToTile(new Vector2(sx, sy))));
+
+    [Theory]
+    [InlineData(0, 0)]
+    [InlineData(1.5f, 2.25f)]
+    [InlineData(-3.75f, 10.5f)]
+    public void ScreenToTileF_InvertsFloatTileToScreen(float x, float y)
+    {
+        var t = IsoMath.ScreenToTileF(IsoMath.TileToScreen(x, y));
+        Assert.Equal(x, t.X, 4);
+        Assert.Equal(y, t.Y, 4);
+    }
 }

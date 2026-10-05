@@ -12,6 +12,16 @@ public static class IsoMath
 
     public static Vector2 TileToScreen(TileCoord c) => new((c.X - c.Y) * HalfW, (c.X + c.Y) * HalfH);
 
+    /// <summary>Fractional tile-space point (e.g. an object position) → screen.</summary>
+    public static Vector2 TileToScreen(float x, float y) => new((x - y) * HalfW, (x + y) * HalfH);
+
+    /// <summary>Inverse of <see cref="TileToScreen(float, float)"/>, no flooring.</summary>
+    public static Vector2 ScreenToTileF(Vector2 p)
+    {
+        float a = p.X / HalfW, b = p.Y / HalfH;
+        return new((b + a) / 2, (b - a) / 2);
+    }
+
     /// <summary>Non-finite input → (int.MinValue, int.MinValue), never in bounds (NaN would cast to 0 = tile (0,0)).</summary>
     public static TileCoord ScreenToTile(Vector2 p)
     {

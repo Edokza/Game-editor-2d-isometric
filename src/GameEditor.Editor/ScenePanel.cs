@@ -9,7 +9,7 @@ using rlImGui_cs;
 namespace GameEditor.Editor;
 
 /// <summary>Renders the map into a RenderTexture shown in the "Scene" panel. Call between rlImGui.Begin/End.</summary>
-public sealed class ScenePanel(MapEditingService service, PaintTool paintTool) : IDisposable
+public sealed class ScenePanel(MapEditingService service, PaintTool paintTool, ObjectPanels objectPanels) : IDisposable
 {
     private RenderTexture2D _rt;
     private Vector2 _pan; // world units, relative to map center
@@ -65,6 +65,7 @@ public sealed class ScenePanel(MapEditingService service, PaintTool paintTool) :
         Raylib.ClearBackground(new Color(30, 30, 36, 255));
         Raylib.BeginMode2D(_camera);
         MapRenderer.Draw(map, Vector2.Zero);
+        MapRenderer.DrawObjects(map.Objects, Vector2.Zero, objectPanels.SelectedId);
         Raylib.EndMode2D();
         paintTool.Update(_camera, mouse, hovered);
         Raylib.EndTextureMode();

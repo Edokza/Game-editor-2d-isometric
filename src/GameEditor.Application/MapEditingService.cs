@@ -8,6 +8,8 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
 {
     private readonly UndoStack _undo = new();
     private Dictionary<TileCoord, (int Old, int New)>? _stroke;
+    private (int Index, MapObject Before, int Token)? _edit;
+    private int _lastToken;
     private bool _dirty;
 
     public TileMap Map { get; private set; } = map;
@@ -15,12 +17,12 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
     public string? CurrentName { get; private set; }
     public bool CanUndo => _undo.CanUndo;
     public bool CanRedo => _undo.CanRedo;
-    /// <summary>Edited since the last successful save/load, including an unfinished stroke.</summary>
-    public bool IsDirty => _dirty || _stroke is { Count: > 0 };
+    /// <summary>Edited since the last successful save/load, including an unfinished stroke or object edit.</summary>
+    public bool IsDirty => _dirty || _stroke is { Count: > 0 } || _edit is { } e && Map.Objects[e.Index] != e.Before;
 
     public void BeginStroke()
     {
-        EndStroke();
+        Flush();
         _stroke = [];
     }
 
@@ -45,9 +47,61 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
         _stroke = null;
     }
 
+    /// <summary>Appends at (<paramref name="x"/>, <paramref name="y"/>) tile space with a fresh id.</summary>
+    public MapObject AddObject(string name, float x, float y)
+    {
+        Flush();
+        var o = new MapObject(Map.NextObjectId, name, x, y);
+        Do(new ObjectCommand(Map, Map.Objects.Count, null, o));
+        return o;
+    }
+
+    public bool RemoveObject(int id)
+    {
+        Flush();
+        int i = Map.IndexOf(id);
+        if (i < 0) return false;
+        Do(new ObjectCommand(Map, i, Map.Objects[i], null));
+        return true;
+    }
+
+    /// <summary>Starts a live edit (e.g. an Inspector drag); <see cref="EndObjectEdit(int)"/> makes it one undo step.</summary>
+    /// <returns>Token for <see cref="EndObjectEdit(int)"/>; 0 when the id is absent.</returns>
+    public int BeginObjectEdit(int id)
+    {
+        Flush();
+        int i = Map.IndexOf(id);
+        if (i < 0) return 0;
+        _edit = (i, Map.Objects[i], ++_lastToken);
+        return _lastToken;
+    }
+
+    /// <summary>Applies immediately; ignored outside an edit of that id or with a non-finite position.</summary>
+    public void UpdateObject(MapObject o)
+    {
+        if (_edit is not { } e || o.Id != e.Before.Id || !float.IsFinite(o.X) || !float.IsFinite(o.Y)) return;
+        Map.Replace(e.Index, o);
+    }
+
+    /// <summary>No-op when another Begin/undo/save already closed that edit, so one widget can't end another's edit.</summary>
+    public void EndObjectEdit(int token)
+    {
+        if (_edit?.Token == token) EndObjectEdit();
+    }
+
+    private void EndObjectEdit()
+    {
+        if (_edit is { } e && Map.Objects[e.Index] is var now && now != e.Before)
+        {
+            _undo.Push(new ObjectCommand(Map, e.Index, e.Before, now));
+            _dirty = true;
+        }
+        _edit = null;
+    }
+
     public bool Undo()
     {
-        EndStroke();
+        Flush();
         if (!_undo.Undo()) return false;
         _dirty = true;
         return true;
@@ -55,7 +109,7 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
 
     public bool Redo()
     {
-        EndStroke();
+        Flush();
         if (!_undo.Redo()) return false;
         _dirty = true;
         return true;
@@ -70,7 +124,7 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
 
     public Result Save(string name)
     {
-        EndStroke();
+        Flush();
         try
         {
             repository.Save(Map, name);
@@ -88,6 +142,7 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
     public void New()
     {
         _stroke = null;
+        _edit = null;
         Map = new TileMap(Map.Width, Map.Height);
         CurrentName = null;
         _undo.Clear();
@@ -96,7 +151,7 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
 
     public Result Load(string name)
     {
-        EndStroke();
+        Flush();
         try
         {
             Map = repository.Load(name);
@@ -109,5 +164,18 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
         {
             return new(false, $"Load failed: {e.Message}");
         }
+    }
+
+    private void Do(ICommand c)
+    {
+        c.Execute();
+        _undo.Push(c);
+        _dirty = true;
+    }
+
+    private void Flush()
+    {
+        EndStroke();
+        EndObjectEdit();
     }
 }

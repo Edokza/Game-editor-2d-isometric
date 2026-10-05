@@ -134,4 +134,118 @@ public class MapEditingServiceTests
         Assert.Null(svc.CurrentName);
         Assert.Empty(svc.ListMaps());
     }
+
+    [Fact]
+    public void AddRemoveObject_UndoRedo()
+    {
+        var svc = new MapEditingService(new TileMap(2, 2), new FakeMapRepository());
+        var a = svc.AddObject("a", 0.5f, 0.5f);
+        var b = svc.AddObject("b", 1.5f, 1.5f);
+        var c = svc.AddObject("c", 1, 1);
+        Assert.Equal([1, 2, 3], svc.Map.Objects.Select(o => o.Id));
+        Assert.True(svc.IsDirty);
+
+        Assert.True(svc.RemoveObject(b.Id));
+        Assert.False(svc.RemoveObject(99));
+        Assert.Equal([a, c], svc.Map.Objects);
+
+        Assert.True(svc.Undo()); // back at its old index, not appended
+        Assert.Equal([a, b, c], svc.Map.Objects);
+        Assert.True(svc.Undo());
+        Assert.Equal([a, b], svc.Map.Objects);
+        Assert.True(svc.Redo());
+        Assert.True(svc.Redo());
+        Assert.Equal([a, c], svc.Map.Objects);
+    }
+
+    [Fact]
+    public void ObjectEdit_ManyUpdates_SingleUndo()
+    {
+        var svc = new MapEditingService(new TileMap(2, 2), new FakeMapRepository());
+        var a = svc.AddObject("a", 0, 0);
+        Assert.True(svc.Save("s").Success);
+
+        int token = svc.BeginObjectEdit(a.Id);
+        Assert.NotEqual(0, token);
+        for (int i = 1; i <= 5; i++) svc.UpdateObject(a with { X = i });
+        Assert.Equal(5, svc.Map.Objects[0].X); // live
+        Assert.True(svc.IsDirty); // mid-edit counts
+        svc.UpdateObject(a with { Id = 42, X = 9 }); // other id ignored
+        svc.UpdateObject(a with { Y = float.NaN });  // non-finite ignored
+        Assert.Equal(a with { X = 5 }, svc.Map.Objects[0]);
+        svc.EndObjectEdit(token);
+
+        Assert.True(svc.Undo());
+        Assert.Equal(a, svc.Map.Objects[0]); // one step back to before the drag
+        Assert.True(svc.Redo());
+        Assert.Equal(a with { X = 5 }, svc.Map.Objects[0]);
+    }
+
+    [Fact]
+    public void ObjectEdit_NoChange_NotPushed_UpdateOutsideEditIgnored()
+    {
+        var svc = new MapEditingService(new TileMap(2, 2), new FakeMapRepository());
+        var a = svc.AddObject("a", 0, 0);
+        Assert.True(svc.Save("s").Success);
+
+        svc.UpdateObject(a with { X = 3 }); // no edit open
+        Assert.Equal(a, svc.Map.Objects[0]);
+
+        int token = svc.BeginObjectEdit(a.Id);
+        svc.UpdateObject(a with { X = 3 });
+        svc.UpdateObject(a); // dragged back to start
+        svc.EndObjectEdit(token);
+        Assert.False(svc.IsDirty);
+        Assert.True(svc.Undo()); // only the add remains
+        Assert.Empty(svc.Map.Objects);
+        Assert.Equal(0, svc.BeginObjectEdit(a.Id));
+    }
+
+    [Fact]
+    public void UndoMidObjectEdit_ClosesEditFirst()
+    {
+        var svc = new MapEditingService(new TileMap(2, 2), new FakeMapRepository());
+        var a = svc.AddObject("a", 0, 0);
+        svc.BeginObjectEdit(a.Id);
+        svc.UpdateObject(a with { X = 2 });
+
+        Assert.True(svc.Undo()); // undoes the edit, not the add
+        Assert.Equal(a, svc.Map.Objects[0]);
+        svc.UpdateObject(a with { X = 7 }); // edit is closed now
+        Assert.Equal(a, svc.Map.Objects[0]);
+    }
+
+    [Fact]
+    public void New_DiscardsObjectsAndOpenEdit()
+    {
+        var svc = new MapEditingService(new TileMap(2, 2), new FakeMapRepository());
+        var a = svc.AddObject("a", 0, 0);
+        int token = svc.BeginObjectEdit(a.Id);
+        svc.New();
+
+        Assert.Empty(svc.Map.Objects);
+        Assert.False(svc.IsDirty);
+        Assert.False(svc.CanUndo);
+        svc.EndObjectEdit(token); // no-op, must not touch the new map
+        Assert.False(svc.CanUndo);
+    }
+
+    [Fact]
+    public void EndObjectEdit_StaleToken_DoesNotCloseNewerEdit()
+    {
+        var svc = new MapEditingService(new TileMap(2, 2), new FakeMapRepository());
+        var a = svc.AddObject("a", 0, 0);
+        int inspector = svc.BeginObjectEdit(a.Id);
+        svc.UpdateObject(a with { Name = "renamed" });
+        int drag = svc.BeginObjectEdit(a.Id); // e.g. Scene drag starts while Inspector field is still active
+        svc.EndObjectEdit(inspector);         // Inspector deactivates afterwards
+        svc.UpdateObject(a with { Name = "renamed", X = 2 });
+        Assert.Equal(2, svc.Map.Objects[0].X); // drag still live
+        svc.EndObjectEdit(drag);
+
+        Assert.True(svc.Undo());
+        Assert.Equal(a with { Name = "renamed" }, svc.Map.Objects[0]);
+        Assert.True(svc.Undo());
+        Assert.Equal(a, svc.Map.Objects[0]);
+    }
 }

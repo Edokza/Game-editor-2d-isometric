@@ -8,9 +8,10 @@ using rlImGui_cs;
 
 const int MapSize = 20;
 var service = new MapEditingService(new TileMap(MapSize, MapSize), new JsonMapRepository(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "GameEditor", "maps")));
-var paintTool = new PaintTool(service);
 var fileMenu = new FileMenu(service);
-var scenePanel = new ScenePanel(service, paintTool);
+var objectPanels = new ObjectPanels(service);
+var paintTool = new PaintTool(service, objectPanels);
+var scenePanel = new ScenePanel(service, paintTool, objectPanels);
 var quit = false;
 
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow | ConfigFlags.VSyncHint);
@@ -44,6 +45,8 @@ while (!quit)
 
     scenePanel.Draw();
     PalettePanel.Draw(paintTool);
+    objectPanels.DrawHierarchy();
+    objectPanels.DrawInspector();
 
     rlImGui.End();
     Raylib.EndDrawing();
