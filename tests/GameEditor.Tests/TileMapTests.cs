@@ -9,6 +9,10 @@ public class TileMapTests
         Assert.Throws<ArgumentException>(() => new TileMap(3, 2, new int[5]));
 
     [Fact]
+    public void Ctor_SizeOverflowingInt_Throws() =>
+        Assert.Throws<ArgumentException>(() => new TileMap(65536, 65536, [])); // 65536*65536 wraps to 0 in int
+
+    [Fact]
     public void Ctor_UsesRowMajorIndex()
     {
         int[] tiles = [0, 1, 2, 3, 4, 5];

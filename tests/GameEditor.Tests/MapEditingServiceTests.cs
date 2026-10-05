@@ -67,6 +67,31 @@ public class MapEditingServiceTests
     }
 
     [Fact]
+    public void IsDirty_SetByEditUndoRedo_ClearedBySaveAndLoad()
+    {
+        var repo = new FakeMapRepository();
+        var svc = new MapEditingService(new TileMap(2, 2), repo);
+        Assert.False(svc.IsDirty);
+
+        svc.BeginStroke();
+        svc.EndStroke(); // empty stroke is not an edit
+        Assert.False(svc.IsDirty);
+
+        svc.BeginStroke();
+        svc.Paint(new TileCoord(0, 0), 1);
+        Assert.True(svc.IsDirty); // mid-stroke counts
+        svc.EndStroke();
+        Assert.True(svc.IsDirty);
+        Assert.True(svc.Save("a").Success);
+        Assert.False(svc.IsDirty);
+
+        Assert.True(svc.Undo());
+        Assert.True(svc.IsDirty);
+        Assert.True(svc.Load("a").Success);
+        Assert.False(svc.IsDirty);
+    }
+
+    [Fact]
     public void RepositoryThrows_ReturnsFailure()
     {
         var map = new TileMap(2, 2);

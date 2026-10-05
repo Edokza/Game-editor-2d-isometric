@@ -5,13 +5,16 @@ using GameEditor.Domain;
 namespace GameEditor.Infrastructure;
 
 /// <summary>One map per file: <c>{folder}/{name}.json</c>.</summary>
-public sealed class JsonMapRepository(string folder = "maps") : IMapRepository
+public sealed class JsonMapRepository(string folder) : IMapRepository
 {
     public void Save(TileMap map, string name)
     {
         var path = PathOf(name);
         Directory.CreateDirectory(folder);
-        File.WriteAllBytes(path, JsonSerializer.SerializeToUtf8Bytes(new MapDto(map.Width, map.Height, [.. map.Tiles]), MapJsonContext.Default.MapDto));
+        // write-then-rename so a crash mid-write never corrupts the existing map
+        var tmp = path + ".tmp";
+        File.WriteAllBytes(tmp, JsonSerializer.SerializeToUtf8Bytes(new MapDto(map.Width, map.Height, [.. map.Tiles]), MapJsonContext.Default.MapDto));
+        File.Move(tmp, path, overwrite: true);
     }
 
     public TileMap Load(string name)

@@ -32,6 +32,17 @@ public sealed class JsonMapRepositoryTests : IDisposable
     }
 
     [Fact]
+    public void SaveOverExisting_ReplacesAndLeavesNoTempFile()
+    {
+        var repo = new JsonMapRepository(Folder);
+        repo.Save(new TileMap(1, 1, [1]), "a");
+        repo.Save(new TileMap(1, 1, [2]), "a");
+
+        Assert.Equal(2, repo.Load("a").Get(new TileCoord(0, 0)));
+        Assert.Equal(["a.json"], Directory.GetFiles(Folder).Select(Path.GetFileName));
+    }
+
+    [Fact]
     public void NoFolder_ListIsEmpty() => Assert.Empty(new JsonMapRepository(Folder).List());
 
     [Theory]

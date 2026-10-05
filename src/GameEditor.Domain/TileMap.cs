@@ -7,14 +7,15 @@ public sealed class TileMap
     public int Width { get; }
     public int Height { get; }
 
-    public TileMap(int width, int height) : this(width, height, new int[width * height]) { }
+    public TileMap(int width, int height) : this(width, height, new int[checked(width * height)]) { }
 
     public TileMap(int width, int height, int[] tiles)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
-        if (width * height != tiles.Length)
-            throw new ArgumentException($"Expected {width * height} tiles, got {tiles.Length}.", nameof(tiles));
+        long count = (long)width * height; // int multiply can wrap to tiles.Length on corrupt files
+        if (count != tiles.Length)
+            throw new ArgumentException($"Expected {count} tiles, got {tiles.Length}.", nameof(tiles));
         Width = width;
         Height = height;
         _tiles = [.. tiles];

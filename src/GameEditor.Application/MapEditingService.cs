@@ -8,12 +8,15 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
 {
     private readonly UndoStack _undo = new();
     private Dictionary<TileCoord, (int Old, int New)>? _stroke;
+    private bool _dirty;
 
     public TileMap Map { get; private set; } = map;
     /// <summary>Name of the last successful save/load; null for a new map.</summary>
     public string? CurrentName { get; private set; }
     public bool CanUndo => _undo.CanUndo;
     public bool CanRedo => _undo.CanRedo;
+    /// <summary>Edited since the last successful save/load, including an unfinished stroke.</summary>
+    public bool IsDirty => _dirty || _stroke is { Count: > 0 };
 
     public void BeginStroke()
     {
@@ -34,20 +37,28 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
     /// <summary>Whole stroke becomes one undo step.</summary>
     public void EndStroke()
     {
-        if (_stroke is { Count: > 0 }) _undo.Push(new PaintTilesCommand(Map, _stroke));
+        if (_stroke is { Count: > 0 })
+        {
+            _undo.Push(new PaintTilesCommand(Map, _stroke));
+            _dirty = true;
+        }
         _stroke = null;
     }
 
     public bool Undo()
     {
         EndStroke();
-        return _undo.Undo();
+        if (!_undo.Undo()) return false;
+        _dirty = true;
+        return true;
     }
 
     public bool Redo()
     {
         EndStroke();
-        return _undo.Redo();
+        if (!_undo.Redo()) return false;
+        _dirty = true;
+        return true;
     }
 
     /// <summary>Empty on error.</summary>
@@ -64,6 +75,7 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
         {
             repository.Save(Map, name);
             CurrentName = name;
+            _dirty = false;
             return new(true, $"Saved '{name}'.");
         }
         catch (Exception e)
@@ -80,6 +92,7 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
             Map = repository.Load(name);
             CurrentName = name;
             _undo.Clear();
+            _dirty = false;
             return new(true, $"Loaded '{name}'.");
         }
         catch (Exception e)

@@ -9,18 +9,21 @@ using Raylib_cs;
 using rlImGui_cs;
 
 const int MapSize = 20;
-var service = new MapEditingService(new TileMap(MapSize, MapSize), new JsonMapRepository());
+var service = new MapEditingService(new TileMap(MapSize, MapSize), new JsonMapRepository(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "GameEditor", "maps")));
 var paintTool = new PaintTool(service);
 var fileMenu = new FileMenu(service);
 var pan = Vector2.Zero;
+var quit = false;
 
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow | ConfigFlags.VSyncHint);
 Raylib.InitWindow(1280, 720, "Game Editor");
 Raylib.SetExitKey(KeyboardKey.Null); // Esc must not quit the editor
 rlImGui.Setup(true, true);
 
-while (!Raylib.WindowShouldClose())
+while (!quit)
 {
+    if (Raylib.WindowShouldClose()) fileMenu.ConfirmDiscard(() => quit = true);
+
     // WantCaptureMouse here is from last frame; fine for panning
     if (Raylib.IsMouseButtonDown(MouseButton.Middle) && !ImGui.GetIO().WantCaptureMouse)
         pan += Raylib.GetMouseDelta();
