@@ -32,6 +32,7 @@ public sealed class FileMenu(MapEditingService service)
     {
         if (ImGui.BeginMenu("File"))
         {
+            if (ImGui.MenuItem("New")) ConfirmDiscard(() => { service.New(); _status = null; });
             if (ImGui.BeginMenu("Open"))
             {
                 if (ImGui.IsWindowAppearing()) _existing = service.ListMaps(); // disk I/O once per open, not per frame
@@ -46,6 +47,12 @@ public sealed class FileMenu(MapEditingService service)
                 else _openSaveAs = true;
             }
             if (ImGui.MenuItem("Save As...")) _openSaveAs = true;
+            ImGui.EndMenu();
+        }
+        if (ImGui.BeginMenu("Edit"))
+        {
+            if (ImGui.MenuItem("Undo", "Ctrl+Z", false, service.CanUndo)) service.Undo();
+            if (ImGui.MenuItem("Redo", "Ctrl+Y", false, service.CanRedo)) service.Redo();
             ImGui.EndMenu();
         }
 

@@ -84,6 +84,16 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
         }
     }
 
+    /// <summary>Blank map of the current size; drops any unsaved edits.</summary>
+    public void New()
+    {
+        _stroke = null;
+        Map = new TileMap(Map.Width, Map.Height);
+        CurrentName = null;
+        _undo.Clear();
+        _dirty = false;
+    }
+
     public Result Load(string name)
     {
         EndStroke();

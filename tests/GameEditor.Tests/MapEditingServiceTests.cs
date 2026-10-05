@@ -92,6 +92,33 @@ public class MapEditingServiceTests
     }
 
     [Fact]
+    public void New_BlankMapSameSize_ResetsState()
+    {
+        var repo = new FakeMapRepository();
+        var svc = new MapEditingService(new TileMap(3, 2), repo);
+        svc.BeginStroke();
+        svc.Paint(new TileCoord(0, 0), 1);
+        svc.EndStroke();
+        Assert.True(svc.Save("a").Success);
+        svc.BeginStroke();
+        svc.Paint(new TileCoord(1, 0), 2);
+        svc.EndStroke();
+        Assert.True(svc.Undo()); // leaves something to redo
+
+        svc.BeginStroke();
+        svc.Paint(new TileCoord(2, 1), 5); // unfinished stroke is discarded, not pushed
+        svc.New();
+
+        Assert.Equal((3, 2), (svc.Map.Width, svc.Map.Height));
+        Assert.All(svc.Map.Tiles.ToArray(), t => Assert.Equal(0, t));
+        Assert.False(svc.CanUndo);
+        Assert.False(svc.CanRedo);
+        Assert.Null(svc.CurrentName);
+        Assert.False(svc.IsDirty);
+        Assert.Equal(1, repo.Stored["a"].Get(new TileCoord(0, 0))); // saved map untouched
+    }
+
+    [Fact]
     public void RepositoryThrows_ReturnsFailure()
     {
         var map = new TileMap(2, 2);
