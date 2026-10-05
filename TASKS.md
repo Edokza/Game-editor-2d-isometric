@@ -1,0 +1,32 @@
+# Isometric Game Editor — Vertical Slice
+
+- [x] 1. Solution + โปรเจกต์ทั้งหมด: `GameEditor.slnx`, `Directory.Build.props`, `Directory.Packages.props` (ล็อก Raylib-cs / rlImGui-cs / ImGui.NET / xUnit v3), 5 โปรเจกต์ใน `src/` + `tests/GameEditor.Tests`, reference ตามตาราง architecture
+  - test: `dotnet build GameEditor.slnx` ผ่าน 0 error / 0 warning ✓ `dotnet build GameEditor.slnx` pass
+- [x] 2. Domain `TileCoord` (record struct) + `TileMap` (`int[]` 1 มิติ, ctor เช็ก `width*height == tiles.Length`, `Set` เป็น `internal`, `InternalsVisibleTo` Application+Tests, `InBounds`, `Get`)
+  - test: `dotnet test` — ctor size ผิด throw, Set/Get ตรง index `y*width+x`, นอกขอบไม่พัง ✓ `dotnet test` pass (7/7)
+- [x] 3. Domain `IsoMath` (`TileToScreen` / `ScreenToTile` สำหรับ 64×32)
+  - test: `dotnet test` — round-trip tile→screen→tile ได้ค่าเดิม, จุดขอบข้าวหลามตัดตกช่องถูก ✓ `dotnet test` pass (19/19)
+- [x] 4. Application `ICommand` + `UndoStack` (Push/Undo/Redo/Clear, push ใหม่ล้าง redo)
+  - test: `dotnet test` — ลำดับ undo/redo ถูก, Clear แล้ว CanUndo=false ✓ `dotnet test` pass (22/22)
+- [x] 5. Application `PaintTilesCommand` (เก็บค่าเก่า/ใหม่ต่อ coord, Execute/Undo)
+  - test: `dotnet test` — Execute เปลี่ยน tile, Undo คืนค่าเดิมทุกช่อง ✓ `dotnet test` pass (23/23)
+- [x] 6. Application `IMapRepository` + `MapEditingService` (BeginStroke/Paint/EndStroke = 1 command, Undo/Redo, Save/Load คืน result ไม่ throw, Load เรียก `UndoStack.Clear()`)
+  - test: `dotnet test` ด้วย `FakeMapRepository` — ลาก 5 ช่อง undo ครั้งเดียวกลับหมด, Load ล้าง undo, repo throw → คืน fail ไม่ crash ✓ `dotnet test` pass (26/26)
+- [x] 7. Editor: เปิดหน้าต่าง raylib + rlImGui + `DockSpaceOverViewport(PassthruCentralNode)` + MenuBar ว่าง
+  - test: `dotnet run --project src/GameEditor.Editor` เห็นหน้าต่าง, ลาก dock panel ได้, ปิดได้ไม่ error ✓ user ยืนยันใน VS pass
+- [x] 8. Rendering `MapRenderer`: วาดตาราง iso ข้าวหลามตัดสีตาม tileId
+  - test: รัน editor เห็น grid iso เต็มฉาก สีตาม tile ✓ user ส่ง screenshot ยืนยัน pass
+- [x] 9. Editor `PaintTool`: คลิก/ลากวาง tile (เช็ก `WantCaptureMouse`), Ctrl+Z / Ctrl+Y
+  - test: รัน editor ลากวาด 1 ครั้ง → Ctrl+Z หายทั้งเส้น, Ctrl+Y กลับมา, คลิกบน panel ไม่วาดทะลุ ✓ user ยืนยัน pass
+- [x] 10. Editor `PalettePanel`: เลือก tile id/สี
+  - test: รัน editor เลือกสีใน palette แล้ววาดได้สีนั้น ✓ user ยืนยัน pass
+- [x] 11. Infrastructure `MapDto` + `MapJsonContext` (source gen) + `JsonMapRepository` (`map.json` ตายตัว)
+  - test: `dotnet test` round-trip save→load ได้ map เดิม (เพิ่ม Infrastructure ref ให้ Tests) + ไฟล์เสีย → คืน fail ✓ `dotnet test` pass (33/33)
+- [x] 12. Editor MenuBar Save/Load ต่อ `MapEditingService` + แสดงข้อความผลใน ImGui
+  - test: รัน editor วาด → Save → ปิด → เปิด → Load ได้ภาพเดิม, ลบ/แก้ `map.json` ให้เสีย → Load ขึ้นข้อความ error ไม่ crash ✓ user ยืนยัน pass
+- [x] 13. Editor: pan กล้องด้วยเมาส์กลาง (map 20×20 = 1280×640 px เต็มจอพอดี พอมี panel dock อยู่ก็บังบางส่วน วาดช่องที่ถูกบังไม่ได้) — เจอตอนทำข้อ 8
+  - test: รัน editor ลากเมาส์กลางแล้ว map เลื่อนตาม, วาดหลัง pan แล้วลงช่องถูกตำแหน่ง ✓ user ยืนยัน pass
+- [x] 14. Application+Infrastructure: save หลายไฟล์ — `IMapRepository` รับชื่อ (`Save(map, name)` / `Load(name)` / `List()`), เก็บที่โฟลเดอร์ `maps/<name>.json`, ชื่อที่มี `/ \ ..` หรืออักขระต้องห้าม → fail, `MapEditingService` จำ `CurrentName` (เปลี่ยนจากข้อกำหนดเดิม "`map.json` ตายตัว" ตามที่ user ขอ)
+  - test: `dotnet test` — save 2 ชื่อแล้ว `List()` เห็นทั้งคู่, load แต่ละชื่อได้ map ของมัน, ชื่อ `../x` → fail ไม่เขียนไฟล์นอกโฟลเดอร์ ✓ `dotnet test` pass (41/41)
+- [x] 15. Editor MenuBar: File → Save (ชื่อปัจจุบัน; ยังไม่มีชื่อ → เปิด Save As), Save As... (popup ใส่ชื่อ, ชื่อซ้ำถามยืนยันทับ), Open (เมนูย่อยรายชื่อใน `maps/`), แถบเมนูแสดงชื่อ map ปัจจุบัน
+  - test: รัน editor วาด → Save As "a" → วาดต่อ → Save As "b" → Open "a" ได้ภาพ a, Open "b" ได้ภาพ b, Save As "a" ซ้ำ → ขึ้นถามยืนยัน ✓ user ยืนยัน pass

@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/GameEditor.Domain/GameEditor.Domain.csproj" />
+    <Project Path="src/GameEditor.Application/GameEditor.Application.csproj" />
+    <Project Path="src/GameEditor.Infrastructure/GameEditor.Infrastructure.csproj" />
+    <Project Path="src/GameEditor.Rendering/GameEditor.Rendering.csproj" />
+    <Project Path="src/GameEditor.Editor/GameEditor.Editor.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GameEditor.Tests/GameEditor.Tests.csproj" />
+  </Folder>
+</Solution>

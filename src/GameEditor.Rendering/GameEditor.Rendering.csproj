@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="Raylib-cs" />
+    <ProjectReference Include="..\GameEditor.Domain\GameEditor.Domain.csproj" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- rlImGui-cs 3.2.0 is built against Raylib-cs 7.0.x + ImGui.NET 1.91.6.1; do not bump Raylib-cs to 8.x alone -->
+    <PackageVersion Include="Raylib-cs" Version="7.0.2" />
+    <PackageVersion Include="rlImGui-cs" Version="3.2.0" />
+    <PackageVersion Include="ImGui.NET" Version="1.91.6.1" />
+    <PackageVersion Include="xunit.v3" Version="4.0.1" />
+  </ItemGroup>
+</Project>

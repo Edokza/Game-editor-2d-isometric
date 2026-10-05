@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\GameEditor.Application\GameEditor.Application.csproj" />
+  </ItemGroup>
+</Project>
