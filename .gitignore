@@ -484,5 +484,8 @@ $RECYCLE.BIN/
 # project
 TestResults/
 TESTS.md
+TASKS.md
+CLAUDE.md
+.claude/
 imgui.ini
 maps/
