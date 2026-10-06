@@ -1,4 +1,3 @@
-using System.Numerics;
 using GameEditor.Application;
 using GameEditor.Domain;
 using GameEditor.Editor;
@@ -35,7 +34,7 @@ while (!quit)
     // here, not in ScenePanel: undo/redo must work while Scene is hidden or collapsed
     if (!ImGui.GetIO().WantCaptureKeyboard)
     {
-        if (play is not null) play.Move(WalkInput(), Raylib.GetFrameTime());
+        if (play is not null) play.Move(GameInput.Walk(), Raylib.GetFrameTime());
         else if (Raylib.IsKeyDown(KeyboardKey.LeftControl) || Raylib.IsKeyDown(KeyboardKey.RightControl))
         {
             if (Raylib.IsKeyPressed(KeyboardKey.Z)) service.Undo();
@@ -69,15 +68,3 @@ scenePanel.Dispose(); // GPU resources: free before CloseWindow
 Sprites.Unload();
 rlImGui.Shutdown();
 Raylib.CloseWindow();
-
-// tile-space direction; W = up the screen = toward smaller x and y
-static Vector2 WalkInput()
-{
-    static bool Down(KeyboardKey a, KeyboardKey b) => Raylib.IsKeyDown(a) || Raylib.IsKeyDown(b);
-    Vector2 d = default;
-    if (Down(KeyboardKey.W, KeyboardKey.Up)) d += new Vector2(-1, -1);
-    if (Down(KeyboardKey.S, KeyboardKey.Down)) d += new Vector2(1, 1);
-    if (Down(KeyboardKey.A, KeyboardKey.Left)) d += new Vector2(-1, 1);
-    if (Down(KeyboardKey.D, KeyboardKey.Right)) d += new Vector2(1, -1);
-    return d;
-}

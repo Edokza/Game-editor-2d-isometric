@@ -3,6 +3,7 @@
     <Project Path="src/GameEditor.Domain/GameEditor.Domain.csproj" />
     <Project Path="src/GameEditor.Application/GameEditor.Application.csproj" />
     <Project Path="src/GameEditor.Infrastructure/GameEditor.Infrastructure.csproj" />
+    <Project Path="src/GameEditor.Player/GameEditor.Player.csproj" />
     <Project Path="src/GameEditor.Rendering/GameEditor.Rendering.csproj" />
     <Project Path="src/GameEditor.Editor/GameEditor.Editor.csproj" />
   </Folder>

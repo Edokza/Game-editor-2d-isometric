@@ -489,3 +489,4 @@ CLAUDE.md
 .claude/
 imgui.ini
 maps/
+!src/GameEditor.Player/maps/
