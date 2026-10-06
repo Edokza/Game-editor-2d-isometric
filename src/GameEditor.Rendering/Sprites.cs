@@ -2,7 +2,7 @@ using Raylib_cs;
 
 namespace GameEditor.Rendering;
 
-/// <summary>Textures from <c>{root}/tiles/&lt;id&gt;_*.png</c> and <c>{root}/objects/&lt;name&gt;.png</c>.
+/// <summary>Textures from <c>{root}/tiles/&lt;id&gt;_*.png</c>, <c>{root}/objects/&lt;name&gt;.png</c> and <c>{root}/characters/&lt;name&gt;.png</c>.
 /// Load after InitWindow, Unload before CloseWindow. Missing file → Id 0 → callers fall back to color/box.</summary>
 public static class Sprites
 {
@@ -11,10 +11,13 @@ public static class Sprites
     /// <summary>Index = tileId.</summary>
     public static Texture2D[] Tiles { get; private set; } = [];
     public static Dictionary<string, Texture2D> Objects { get; } = [];
+    /// <summary>Not in <see cref="Objects"/>: the Assets panel must not offer them, but <see cref="Object"/> still finds them.</summary>
+    public static Dictionary<string, Texture2D> Characters { get; } = [];
 
     public static Texture2D Tile(int id) => (uint)id < (uint)Tiles.Length ? Tiles[id] : default;
 
-    public static Texture2D Object(string? name) => name is not null && Objects.TryGetValue(name, out var t) ? t : default;
+    public static Texture2D Object(string? name) =>
+        name is not null && (Objects.TryGetValue(name, out var t) || Characters.TryGetValue(name, out t)) ? t : default;
 
     public static void Load(string root)
     {
@@ -30,8 +33,14 @@ public static class Sprites
         }
         Tiles = tiles[..count];
 
-        foreach (var f in Files(Path.Combine(root, "objects")))
-            if (LoadPng(f) is { Id: not 0 } t && !Objects.TryAdd(Path.GetFileNameWithoutExtension(f), t))
+        LoadNamed(Path.Combine(root, "objects"), Objects);
+        LoadNamed(Path.Combine(root, "characters"), Characters);
+    }
+
+    private static void LoadNamed(string dir, Dictionary<string, Texture2D> into)
+    {
+        foreach (var f in Files(dir))
+            if (LoadPng(f) is { Id: not 0 } t && !into.TryAdd(Path.GetFileNameWithoutExtension(f), t))
                 Raylib.UnloadTexture(t);
     }
 
@@ -51,9 +60,10 @@ public static class Sprites
     public static void Unload()
     {
         foreach (var t in Tiles) if (t.Id != 0) Raylib.UnloadTexture(t);
-        foreach (var t in Objects.Values) if (t.Id != 0) Raylib.UnloadTexture(t);
+        foreach (var t in Objects.Values.Concat(Characters.Values)) Raylib.UnloadTexture(t); // dicts only hold Id != 0
         Tiles = [];
         Objects.Clear();
+        Characters.Clear();
     }
 
     // ordinal: duplicate tile ids resolve the same way on every machine/culture (first file wins)

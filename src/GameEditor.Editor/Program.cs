@@ -1,3 +1,4 @@
+using System.Numerics;
 using GameEditor.Application;
 using GameEditor.Domain;
 using GameEditor.Editor;
@@ -30,25 +31,35 @@ while (!quit)
     Raylib.ClearBackground(new Color(30, 30, 36, 255));
 
     rlImGui.Begin();
+    var play = scenePanel.Play;
     // here, not in ScenePanel: undo/redo must work while Scene is hidden or collapsed
-    if (!ImGui.GetIO().WantCaptureKeyboard && (Raylib.IsKeyDown(KeyboardKey.LeftControl) || Raylib.IsKeyDown(KeyboardKey.RightControl)))
+    if (!ImGui.GetIO().WantCaptureKeyboard)
     {
-        if (Raylib.IsKeyPressed(KeyboardKey.Z)) service.Undo();
-        if (Raylib.IsKeyPressed(KeyboardKey.Y)) service.Redo();
+        if (play is not null) play.Move(WalkInput(), Raylib.GetFrameTime());
+        else if (Raylib.IsKeyDown(KeyboardKey.LeftControl) || Raylib.IsKeyDown(KeyboardKey.RightControl))
+        {
+            if (Raylib.IsKeyPressed(KeyboardKey.Z)) service.Undo();
+            if (Raylib.IsKeyPressed(KeyboardKey.Y)) service.Redo();
+        }
     }
     ImGui.DockSpaceOverViewport(0, ImGui.GetMainViewport(), ImGuiDockNodeFlags.PassthruCentralNode);
 
     if (ImGui.BeginMainMenuBar())
     {
+        ImGui.BeginDisabled(play is not null); // edits would land on the editor map, invisible until Stop
         fileMenu.DrawMenu();
+        ImGui.EndDisabled();
+        if (ImGui.MenuItem(play is null ? "Play" : "Stop")) scenePanel.Play = play is null ? new PlaySession(service.Map) : null;
         ImGui.EndMainMenuBar();
     }
-    fileMenu.DrawPopups();
+    fileMenu.DrawPopups(); // not disabled: closing the window during play must still be able to confirm
 
     scenePanel.Draw();
+    ImGui.BeginDisabled(play is not null);
     AssetsPanel.Draw(paintTool, service, objectPanels);
     objectPanels.DrawHierarchy();
     objectPanels.DrawInspector();
+    ImGui.EndDisabled();
 
     rlImGui.End();
     Raylib.EndDrawing();
@@ -59,3 +70,14 @@ Sprites.Unload();
 rlImGui.Shutdown();
 Raylib.CloseWindow();
 
+// tile-space direction; W = up the screen = toward smaller x and y
+static Vector2 WalkInput()
+{
+    static bool Down(KeyboardKey a, KeyboardKey b) => Raylib.IsKeyDown(a) || Raylib.IsKeyDown(b);
+    Vector2 d = default;
+    if (Down(KeyboardKey.W, KeyboardKey.Up)) d += new Vector2(-1, -1);
+    if (Down(KeyboardKey.S, KeyboardKey.Down)) d += new Vector2(1, 1);
+    if (Down(KeyboardKey.A, KeyboardKey.Left)) d += new Vector2(-1, 1);
+    if (Down(KeyboardKey.D, KeyboardKey.Right)) d += new Vector2(1, -1);
+    return d;
+}

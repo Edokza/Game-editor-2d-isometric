@@ -15,6 +15,9 @@ public sealed class ScenePanel(MapEditingService service, PaintTool paintTool, O
     private Vector2 _pan; // world units, relative to map center
     private Camera2D _camera = new() { Zoom = 1f };
 
+    /// <summary>Non-null = play mode: shows the session's map, editing tools off.</summary>
+    public PlaySession? Play { get; set; }
+
     public void Draw()
     {
         ImGui.SetNextWindowSize(new(800, 600), ImGuiCond.FirstUseEver);
@@ -43,7 +46,7 @@ public sealed class ScenePanel(MapEditingService service, PaintTool paintTool, O
         if (hovered && Raylib.IsMouseButtonDown(MouseButton.Middle))
             _pan += Raylib.GetMouseDelta() / _camera.Zoom;
 
-        var map = service.Map;
+        var map = Play?.Map ?? service.Map;
         // panel center looks at the map's iso bounding box center (tile (0,0) top vertex = world origin), minus pan
         _camera.Offset = size / 2f;
         _camera.Target = new Vector2(
@@ -74,9 +77,9 @@ public sealed class ScenePanel(MapEditingService service, PaintTool paintTool, O
         Raylib.ClearBackground(new Color(30, 30, 36, 255));
         Raylib.BeginMode2D(_camera);
         MapRenderer.Draw(map, Vector2.Zero);
-        MapRenderer.DrawObjects(map.Objects, Vector2.Zero, objectPanels.SelectedId);
+        MapRenderer.DrawObjects(map, Vector2.Zero, Play is null ? objectPanels.SelectedId : null);
         Raylib.EndMode2D();
-        paintTool.Update(_camera, mouse, hovered);
+        if (Play is null) paintTool.Update(_camera, mouse, hovered);
         Raylib.EndTextureMode();
 
         ImGui.End();

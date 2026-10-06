@@ -29,7 +29,7 @@ public sealed class PaintTool(MapEditingService service, ObjectPanels objectPane
 
         if (!_painting && _drag is null && sceneHovered && Raylib.IsMouseButtonPressed(MouseButton.Left))
         {
-            if (MapRenderer.ObjectAt(map.Objects, Vector2.Zero, world) is { } hit)
+            if (MapRenderer.ObjectAt(map, Vector2.Zero, world) is { } hit)
             {
                 objectPanels.SelectedId = hit.Id;
                 _drag = (hit.Id, IsoMath.ScreenToTileF(world) - new Vector2(hit.X, hit.Y), service.BeginObjectEdit(hit.Id));
