@@ -16,7 +16,7 @@ var scenePanel = new ScenePanel(service, paintTool, objectPanels);
 var quit = false;
 
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow | ConfigFlags.VSyncHint);
-Raylib.InitWindow(1280, 720, "Game Editor");
+Raylib.InitWindow(1280, 720, $"Game Editor v{typeof(Program).Assembly.GetName().Version!.ToString(3)}");
 Raylib.SetExitKey(KeyboardKey.Null); // Esc must not quit the editor
 Sprites.Load(Path.Combine(AppContext.BaseDirectory, "assets"));
 rlImGui.Setup(true, true);
