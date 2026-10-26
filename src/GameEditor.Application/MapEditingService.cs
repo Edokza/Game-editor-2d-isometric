@@ -184,19 +184,17 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
     }
 
     /// <summary>Keeps the top-left corner; new cells are 0, objects past the new right/bottom edge are dropped.
-    /// Clears undo: old commands hold the previous <see cref="TileMap"/>.</summary>
+    /// One undo step: undo restores the previous <see cref="TileMap"/> instance.</summary>
     public void Resize(int width, int height)
     {
         CheckSize(width, height);
-        if (width == Map.Width && height == Map.Height) return; // OK on an unchanged popup must not wipe undo
+        if (width == Map.Width && height == Map.Height) return; // OK on an unchanged popup is not an edit
         Flush();
         var tiles = new int[width * height];
         for (int y = 0; y < Math.Min(height, Map.Height); y++)
             for (int x = 0; x < Math.Min(width, Map.Width); x++)
                 tiles[y * width + x] = Map.Get(new TileCoord(x, y));
-        Map = new TileMap(width, height, tiles, Map.Objects.Where(o => o.X < width && o.Y < height), Map.Solid);
-        _undo.Clear();
-        _dirty = true;
+        Do(new ResizeCommand(m => Map = m, Map, new TileMap(width, height, tiles, Map.Objects.Where(o => o.X < width && o.Y < height), Map.Solid)));
     }
 
     public Result Load(string name)

@@ -130,7 +130,6 @@ public sealed class FileMenu(MapEditingService service, string docs)
         _width = Math.Clamp(_width, 1, MapEditingService.MaxSize);
         _height = Math.Clamp(_height, 1, MapEditingService.MaxSize);
         ImGui.TextDisabled(SizeHint);
-        if (resize) ImGui.TextColored(new Vector4(1, 0.8f, 0.3f, 1), "Undo history will be cleared.");
 
         if (ImGui.Button("OK"))
         {
