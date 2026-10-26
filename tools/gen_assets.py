@@ -1,7 +1,7 @@
 """16-bit style pixel-art sprites -> assets/. Run: python tools/gen_assets.py  (needs Pillow)
 Anchor for every sprite = bottom center (tile: its bottom vertex, object: its X,Y). Light comes from the top-left."""
 import math, os
-from PIL import Image
+from PIL import Image, ImageEnhance
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "assets")
 N4 = ((1, 0), (-1, 0), (0, 1), (0, -1))
@@ -264,6 +264,15 @@ objects = {"tree": tree(), "rock": rock(), "spawn": spawn(), "crate": block(64, 
 se, ne = chr_(34, None), chr_(None, 44)
 flip = lambda im: im.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
 chars = {"hero_se": se, "hero_ne": ne, "hero_sw": flip(se), "hero_nw": flip(ne)}
+
+# pastel tiles: full palette glared when it covered the screen. Less saturation + contrast, slight lift.
+# RGB only, enhancers would scale alpha too
+def tone(im, sat=.6, contrast=.75, bright=1.15):
+    rgb = im.convert("RGB")
+    for e, f in ((ImageEnhance.Color, sat), (ImageEnhance.Contrast, contrast), (ImageEnhance.Brightness, bright)): rgb = e(rgb).enhance(f)
+    rgb.putalpha(im.getchannel("A"))
+    return rgb
+tiles = {n: tone(im) for n, im in tiles.items()}
 
 for n, im in tiles.items():
     assert im.width == 128 and len(im.getcolors(1 << 16)) >= 8, n  # 128x64 grid, 16-bit look: >= 8 colors
