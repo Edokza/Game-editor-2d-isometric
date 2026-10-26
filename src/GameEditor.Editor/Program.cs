@@ -19,6 +19,8 @@ var quit = false;
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow | ConfigFlags.VSyncHint);
 var version = typeof(Program).Assembly.GetName().Version!.ToString(3);
 (string? Name, bool Dirty)? titled = null; // what the title shows: rebuilt only on change, not per frame
+(TileCoord Tile, int Id)? hovered = null; // same for the menu bar's hover text
+var hoverText = "";
 Raylib.InitWindow(1280, 720, $"Game Editor v{version}");
 Raylib.SetExitKey(KeyboardKey.Null); // Esc must not quit the editor
 Sprites.Load(Path.Combine(AppContext.BaseDirectory, "assets"));
@@ -69,9 +71,21 @@ while (!quit)
     if (ImGui.BeginMainMenuBar())
     {
         ImGui.BeginDisabled(play is not null); // edits would land on the editor map, invisible until Stop
-        fileMenu.DrawMenu();
+        fileMenu.DrawMenu(scenePanel);
         ImGui.EndDisabled();
         if (ImGui.MenuItem(play is null ? "Play" : "Stop")) scenePanel.Play = play is null ? new PlaySession(service.Map) : null;
+        // Hover is last frame's: InBounds guards a resize/load since then; play: Update doesn't run, so it's stale
+        if (play is null && paintTool.Hover is { } h && service.Map.InBounds(h))
+        {
+            int id = service.Map.Get(h);
+            if (hovered != (h, id))
+            {
+                hovered = (h, id);
+                hoverText = $"({h.X}, {h.Y}) id {id}";
+            }
+            ImGui.SetCursorPosX(ImGui.GetWindowWidth() - ImGui.CalcTextSize(hoverText).X - ImGui.GetStyle().ItemSpacing.X);
+            ImGui.TextDisabled(hoverText);
+        }
         ImGui.EndMainMenuBar();
     }
     fileMenu.DrawPopups(); // not disabled: closing the window during play must still be able to confirm

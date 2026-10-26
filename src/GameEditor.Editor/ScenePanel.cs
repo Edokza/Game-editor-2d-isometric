@@ -11,6 +11,7 @@ namespace GameEditor.Editor;
 /// <summary>Renders the map into a RenderTexture shown in the "Scene" panel. Call between rlImGui.Begin/End.</summary>
 public sealed class ScenePanel(MapEditingService service, PaintTool paintTool, ObjectPanels objectPanels) : IDisposable
 {
+    private static readonly Color GridColor = new(255, 255, 255, 90);
     private RenderTexture2D _rt;
     private Vector2 _pan; // world units, relative to map center
     private Camera2D _camera = new() { Zoom = 1f };
@@ -18,6 +19,9 @@ public sealed class ScenePanel(MapEditingService service, PaintTool paintTool, O
 
     /// <summary>Non-null = play mode: shows the session's map, editing tools off.</summary>
     public PlaySession? Play { get; set; }
+
+    /// <summary>Outline every tile over the map; editor only.</summary>
+    public bool Grid { get; set; }
 
     public void Draw()
     {
@@ -31,6 +35,7 @@ public sealed class ScenePanel(MapEditingService service, PaintTool paintTool, O
         ImGui.PopStyleVar();
         if (!visible)
         {
+            paintTool.Hover = null; // Update won't run to clear it
             ImGui.End();
             return;
         }
@@ -88,6 +93,11 @@ public sealed class ScenePanel(MapEditingService service, PaintTool paintTool, O
         Raylib.BeginMode2D(_camera);
         MapRenderer.Draw(map, Vector2.Zero);
         MapRenderer.DrawObjects(map, Vector2.Zero, Play is null ? objectPanels.SelectedId : null);
+        // ponytail: 4 lines per tile every frame, 256x256 = 262k lines; cull to the view if big maps lag
+        if (Grid && Play is null)
+            for (int y = 0; y < map.Height; y++)
+            for (int x = 0; x < map.Width; x++)
+                MapRenderer.DrawHighlight(new TileCoord(x, y), Vector2.Zero, GridColor);
         Raylib.EndMode2D();
         if (Play is null) paintTool.Update(_camera, mouse, hovered);
         Raylib.EndTextureMode();

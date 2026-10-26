@@ -18,11 +18,15 @@ public sealed class PaintTool(MapEditingService service, ObjectPanels objectPane
     public int TileId { get; set; } = 1;
     public PaintMode Mode { get; set; }
 
+    /// <summary>In-bounds tile under the mouse in Scene, else null. Set by Update; ScenePanel clears it while hidden.</summary>
+    public TileCoord? Hover { get; set; }
+
     public void Update(Camera2D camera, Vector2 mouse, bool sceneHovered)
     {
         var world = Raylib.GetScreenToWorld2D(mouse, camera);
         var hover = IsoMath.ScreenToTile(world);
         var map = service.Map;
+        Hover = sceneHovered && map.InBounds(hover) ? hover : null;
 
         if (sceneHovered && service.Map.InBounds(hover))
         {

@@ -51,7 +51,7 @@ public sealed class FileMenu(MapEditingService service, string docs)
     }
 
     /// <summary>Call between BeginMainMenuBar/EndMainMenuBar.</summary>
-    public void DrawMenu()
+    public void DrawMenu(ScenePanel scene)
     {
         if (ImGui.BeginMenu("File"))
         {
@@ -69,6 +69,11 @@ public sealed class FileMenu(MapEditingService service, string docs)
             if (ImGui.MenuItem("Redo", "Ctrl+Y", false, service.CanRedo)) service.Redo();
             ImGui.Separator();
             if (ImGui.MenuItem("Resize Map...")) _openResize = true;
+            ImGui.EndMenu();
+        }
+        if (ImGui.BeginMenu("View"))
+        {
+            if (ImGui.MenuItem("Grid", "", scene.Grid)) scene.Grid = !scene.Grid; // no shortcut: G is Fill
             ImGui.EndMenu();
         }
 
