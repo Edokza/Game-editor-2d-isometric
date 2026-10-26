@@ -13,10 +13,12 @@ public sealed class FileMenu(MapEditingService service, string docs)
     private const string DiscardPopup = "Unsaved changes";
     private const string NewPopup = "New Map";
     private const string ResizePopup = "Resize Map";
+    private const string OpenPopup = "Open Map";
     private static readonly string SizeHint = $"1-{MapEditingService.MaxSize} tiles per side"; // built once, not per frame
     private bool _openSaveAs;
     private bool _openNew;
     private bool _openResize;
+    private bool _openOpen;
     private int _width, _height;
     private bool _openDiscard;
     private Action? _onDiscard;
@@ -38,26 +40,25 @@ public sealed class FileMenu(MapEditingService service, string docs)
         _openDiscard = true;
     }
 
+    // shared by the menu and the Ctrl shortcuts in Program.cs
+    public void New() => _openNew = true;
+    public void Open() => _openOpen = true;
+    public void SaveAs() => _openSaveAs = true;
+    public void Save()
+    {
+        if (service.CurrentName is { } n) _status = service.Save(n);
+        else _openSaveAs = true;
+    }
+
     /// <summary>Call between BeginMainMenuBar/EndMainMenuBar.</summary>
     public void DrawMenu()
     {
         if (ImGui.BeginMenu("File"))
         {
-            if (ImGui.MenuItem("New...")) _openNew = true;
-            if (ImGui.BeginMenu("Open"))
-            {
-                if (ImGui.IsWindowAppearing()) _existing = service.ListMaps(); // disk I/O once per open, not per frame
-                if (_existing.Count == 0) ImGui.TextDisabled("(no saved maps)");
-                foreach (var m in _existing)
-                    if (ImGui.MenuItem(m, "", m == service.CurrentName)) ConfirmDiscard(() => _status = service.Load(m));
-                ImGui.EndMenu();
-            }
-            if (ImGui.MenuItem("Save"))
-            {
-                if (service.CurrentName is { } n) _status = service.Save(n);
-                else _openSaveAs = true;
-            }
-            if (ImGui.MenuItem("Save As...")) _openSaveAs = true;
+            if (ImGui.MenuItem("New...", "Ctrl+N")) New();
+            if (ImGui.MenuItem("Open...", "Ctrl+O")) Open();
+            if (ImGui.MenuItem("Save", "Ctrl+S")) Save();
+            if (ImGui.MenuItem("Save As...", "Ctrl+Shift+S")) SaveAs();
             ImGui.Separator();
             if (ImGui.MenuItem("Export Game...")) ExportGame();
             ImGui.EndMenu();
@@ -107,6 +108,7 @@ public sealed class FileMenu(MapEditingService service, string docs)
     public void DrawPopups()
     {
         DrawSaveAs();
+        DrawOpen();
         DrawSize(NewPopup, ref _openNew, resize: false);
         DrawSize(ResizePopup, ref _openResize, resize: true);
         DrawDiscard(); // after DrawSize: New's confirm opens from there
@@ -143,6 +145,29 @@ public sealed class FileMenu(MapEditingService service, string docs)
             ImGui.CloseCurrentPopup();
         }
         ImGui.SameLine();
+        if (ImGui.Button("Cancel")) ImGui.CloseCurrentPopup();
+        ImGui.EndPopup();
+    }
+
+    private void DrawOpen()
+    {
+        if (_openOpen)
+        {
+            _openOpen = false;
+            _existing = service.ListMaps(); // disk I/O once per open, not per frame
+            ImGui.OpenPopup(OpenPopup);
+        }
+
+        bool open = true;
+        if (!ImGui.BeginPopupModal(OpenPopup, ref open, ImGuiWindowFlags.AlwaysAutoResize)) return;
+
+        if (_existing.Count == 0) ImGui.TextDisabled("(no saved maps)");
+        foreach (var m in _existing)
+            if (ImGui.Selectable(m, m == service.CurrentName))
+            {
+                ConfirmDiscard(() => _status = service.Load(m));
+                ImGui.CloseCurrentPopup();
+            }
         if (ImGui.Button("Cancel")) ImGui.CloseCurrentPopup();
         ImGui.EndPopup();
     }

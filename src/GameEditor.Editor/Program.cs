@@ -17,7 +17,9 @@ var scenePanel = new ScenePanel(service, paintTool, objectPanels);
 var quit = false;
 
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow | ConfigFlags.VSyncHint);
-Raylib.InitWindow(1280, 720, $"Game Editor v{typeof(Program).Assembly.GetName().Version!.ToString(3)}");
+var version = typeof(Program).Assembly.GetName().Version!.ToString(3);
+(string? Name, bool Dirty)? titled = null; // what the title shows: rebuilt only on change, not per frame
+Raylib.InitWindow(1280, 720, $"Game Editor v{version}");
 Raylib.SetExitKey(KeyboardKey.Null); // Esc must not quit the editor
 Sprites.Load(Path.Combine(AppContext.BaseDirectory, "assets"));
 rlImGui.Setup(true, true);
@@ -26,6 +28,11 @@ ImGui.GetIO().ConfigWindowsMoveFromTitleBarOnly = true; // left-drag in Scene pa
 while (!quit)
 {
     if (Raylib.WindowShouldClose()) fileMenu.ConfirmDiscard(() => quit = true);
+    if (titled != (service.CurrentName, service.IsDirty))
+    {
+        titled = (service.CurrentName, service.IsDirty);
+        Raylib.SetWindowTitle($"{service.CurrentName ?? "(unsaved)"}{(service.IsDirty ? "*" : "")} - Game Editor v{version}");
+    }
 
     Raylib.BeginDrawing();
     Raylib.ClearBackground(new Color(30, 30, 36, 255));
@@ -40,6 +47,13 @@ while (!quit)
         {
             if (Raylib.IsKeyPressed(KeyboardKey.Z)) service.Undo();
             if (Raylib.IsKeyPressed(KeyboardKey.Y)) service.Redo();
+            if (Raylib.IsKeyPressed(KeyboardKey.N)) fileMenu.New();
+            if (Raylib.IsKeyPressed(KeyboardKey.O)) fileMenu.Open();
+            if (Raylib.IsKeyPressed(KeyboardKey.S))
+            {
+                if (Raylib.IsKeyDown(KeyboardKey.LeftShift) || Raylib.IsKeyDown(KeyboardKey.RightShift)) fileMenu.SaveAs();
+                else fileMenu.Save();
+            }
             // spawn skipped: AddObject would move the one spawn, not copy it
             if (Raylib.IsKeyPressed(KeyboardKey.D) && objectPanels.SelectedId is { } sel
                 && service.Map.Objects.FirstOrDefault(o => o.Id == sel) is { Sprite: not PlaySession.SpawnSprite } dup)
