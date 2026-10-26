@@ -40,6 +40,8 @@ while (!quit)
             if (Raylib.IsKeyPressed(KeyboardKey.Z)) service.Undo();
             if (Raylib.IsKeyPressed(KeyboardKey.Y)) service.Redo();
         }
+        else if (Raylib.IsKeyPressed(KeyboardKey.B)) paintTool.Mode = PaintMode.Brush;
+        else if (Raylib.IsKeyPressed(KeyboardKey.G)) paintTool.Mode = PaintMode.Fill;
     }
     ImGui.DockSpaceOverViewport(0, ImGui.GetMainViewport(), ImGuiDockNodeFlags.PassthruCentralNode);
 

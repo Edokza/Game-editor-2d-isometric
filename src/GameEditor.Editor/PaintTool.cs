@@ -6,13 +6,16 @@ using Raylib_cs;
 
 namespace GameEditor.Editor;
 
-/// <summary>Left-drag: on an object moves it, elsewhere paints tiles. Called by ScenePanel inside its texture mode; mouse is panel-local.</summary>
+public enum PaintMode { Brush, Fill }
+
+/// <summary>Left-drag: on an object moves it, elsewhere paints tiles (Fill: one click floods the region). Called by ScenePanel inside its texture mode; mouse is panel-local.</summary>
 public sealed class PaintTool(MapEditingService service, ObjectPanels objectPanels)
 {
     private bool _painting;
     private (int Id, Vector2 Grab, int Token)? _drag; // Grab = mouse minus object position, tile space
 
     public int TileId { get; set; } = 1;
+    public PaintMode Mode { get; set; }
 
     public void Update(Camera2D camera, Vector2 mouse, bool sceneHovered)
     {
@@ -34,6 +37,7 @@ public sealed class PaintTool(MapEditingService service, ObjectPanels objectPane
                 objectPanels.SelectedId = hit.Id;
                 _drag = (hit.Id, IsoMath.ScreenToTileF(world) - new Vector2(hit.X, hit.Y), service.BeginObjectEdit(hit.Id));
             }
+            else if (Mode == PaintMode.Fill) service.Fill(hover, TileId);
             else
             {
                 service.BeginStroke();

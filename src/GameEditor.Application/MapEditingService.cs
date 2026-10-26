@@ -50,6 +50,22 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
         _stroke = null;
     }
 
+    /// <summary>4-way flood fill of the region sharing <paramref name="c"/>'s tile id; one undo step.
+    /// No-op outside the map or when already <paramref name="tileId"/>.</summary>
+    public void Fill(TileCoord c, int tileId)
+    {
+        Flush();
+        if (!Map.InBounds(c)) return;
+        int from = Map.Get(c);
+        if (from == tileId) return;
+        var changes = new Dictionary<TileCoord, (int Old, int New)> { [c] = (from, tileId) };
+        var queue = new Queue<TileCoord>([c]); // queue, not recursion: 256×256 would overflow the stack
+        while (queue.TryDequeue(out var p))
+            foreach (var n in (ReadOnlySpan<TileCoord>)[new(p.X + 1, p.Y), new(p.X - 1, p.Y), new(p.X, p.Y + 1), new(p.X, p.Y - 1)])
+                if (Map.InBounds(n) && Map.Get(n) == from && changes.TryAdd(n, (from, tileId))) queue.Enqueue(n);
+        Do(new PaintTilesCommand(Map, changes));
+    }
+
     /// <summary>Appends at (<paramref name="x"/>, <paramref name="y"/>) tile space with a fresh id.
     /// A spawn when one exists moves that one instead: the hero has one spawn point.</summary>
     public MapObject AddObject(string name, float x, float y, string? sprite = null)

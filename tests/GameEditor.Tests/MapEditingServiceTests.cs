@@ -370,4 +370,91 @@ public class MapEditingServiceTests
         Assert.True(svc.Undo());
         Assert.Equal(a, svc.Map.Objects[0]);
     }
+
+    private static int Count(TileMap m, int id)
+    {
+        int n = 0;
+        for (int y = 0; y < m.Height; y++)
+            for (int x = 0; x < m.Width; x++)
+                if (m.Get(new TileCoord(x, y)) == id) n++;
+        return n;
+    }
+
+    [Fact]
+    public void Fill_EmptyMap_ChangesAll_SingleUndoRevertsAll()
+    {
+        var svc = new MapEditingService(new TileMap(20, 20), new FakeMapRepository());
+        svc.Fill(new TileCoord(5, 5), 2);
+        Assert.Equal(400, Count(svc.Map, 2));
+        Assert.True(svc.IsDirty);
+        Assert.True(svc.Undo());
+        Assert.Equal(400, Count(svc.Map, 0));
+        Assert.False(svc.CanUndo);
+    }
+
+    [Fact]
+    public void Fill_StopsAtWall_DiagonalGapDoesNotLeak()
+    {
+        // water (3) ring on 0..4 encloses the 3x3 interior; (5,5) etc. outside
+        var svc = new MapEditingService(new TileMap(6, 6), new FakeMapRepository());
+        svc.BeginStroke();
+        for (int i = 0; i <= 4; i++)
+        {
+            svc.Paint(new TileCoord(i, 0), 3);
+            svc.Paint(new TileCoord(i, 4), 3);
+            svc.Paint(new TileCoord(0, i), 3);
+            svc.Paint(new TileCoord(4, i), 3);
+        }
+        svc.EndStroke();
+        svc.Fill(new TileCoord(2, 2), 1);
+        Assert.Equal(9, Count(svc.Map, 1));
+        Assert.Equal(0, svc.Map.Get(new TileCoord(5, 5)));
+        Assert.Equal(0, svc.Map.Get(new TileCoord(5, 0)));
+    }
+
+    [Fact]
+    public void Fill_DiagonalOnly_DoesNotSpread()
+    {
+        // checkerboard: every 0 cell touches other 0 cells only diagonally
+        var tiles = new int[16];
+        for (int i = 0; i < 16; i++) tiles[i] = (i % 4 + i / 4) % 2;
+        var svc = new MapEditingService(new TileMap(4, 4, tiles), new FakeMapRepository());
+        svc.Fill(new TileCoord(0, 0), 5);
+        Assert.Equal(1, Count(svc.Map, 5));
+    }
+
+    [Fact]
+    public void Fill_SameIdOrOutOfMap_NoOp()
+    {
+        var svc = new MapEditingService(new TileMap(4, 4), new FakeMapRepository());
+        svc.Fill(new TileCoord(1, 1), 0);
+        svc.Fill(new TileCoord(-1, 0), 2);
+        svc.Fill(new TileCoord(4, 0), 2);
+        Assert.False(svc.CanUndo);
+        Assert.False(svc.IsDirty);
+        Assert.Equal(16, Count(svc.Map, 0));
+    }
+
+    [Fact]
+    public void Fill_FlushesOpenStroke_AsSeparateUndo()
+    {
+        var svc = new MapEditingService(new TileMap(4, 4), new FakeMapRepository());
+        svc.BeginStroke();
+        svc.Paint(new TileCoord(0, 0), 3);
+        svc.Fill(new TileCoord(3, 3), 1);
+        Assert.Equal(15, Count(svc.Map, 1));
+        Assert.True(svc.Undo());
+        Assert.Equal(3, svc.Map.Get(new TileCoord(0, 0)));
+        Assert.Equal(15, Count(svc.Map, 0));
+        Assert.True(svc.Undo());
+        Assert.Equal(16, Count(svc.Map, 0));
+    }
+
+    [Fact]
+    public void Fill_MaxSizeMap_FillsAll()
+    {
+        var svc = new MapEditingService(new TileMap(MapEditingService.MaxSize, MapEditingService.MaxSize), new FakeMapRepository());
+        svc.Fill(new TileCoord(128, 128), 1);
+        Assert.Equal(MapEditingService.MaxSize * MapEditingService.MaxSize, Count(svc.Map, 1));
+    }
 }

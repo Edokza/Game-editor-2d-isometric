@@ -17,6 +17,9 @@ public static class AssetsPanel
     {
         ImGui.SetNextWindowSize(new(240, 320), ImGuiCond.FirstUseEver);
         ImGui.Begin("Assets");
+        if (ImGui.RadioButton("Brush (B)", tool.Mode == PaintMode.Brush)) tool.Mode = PaintMode.Brush;
+        ImGui.SameLine();
+        if (ImGui.RadioButton("Fill (G)", tool.Mode == PaintMode.Fill)) tool.Mode = PaintMode.Fill;
         if (ImGui.BeginTabBar("assets"))
         {
             if (ImGui.BeginTabItem("Tiles"))
