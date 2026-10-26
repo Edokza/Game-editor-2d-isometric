@@ -112,5 +112,5 @@ chars = {"hero_se": se, "hero_ne": ne, "hero_sw": flip(se), "hero_nw": flip(ne)}
 
 for folder, d in (("tiles", tiles), ("objects", objects), ("characters", chars)):
     os.makedirs(f"{OUT}/{folder}", exist_ok=True)
-    for n, im in d.items(): im.save(f"{OUT}/{folder}/{n}.png")
+    for n, im in d.items(): im.resize((im.width * 2, im.height * 2), Image.Resampling.NEAREST).save(f"{OUT}/{folder}/{n}.png")  # temp 3.0: old art on 128x64 grid
 print("ok", os.path.normpath(OUT))

@@ -80,11 +80,11 @@ public static class MapRenderer
         Raylib.DrawLineV(left, top, color);
     }
 
-    /// <summary>Sprite bounds (24×40 placeholder box without one); bottom center = object position.</summary>
+    /// <summary>Sprite bounds (48×80 placeholder box without one); bottom center = object position.</summary>
     public static Rectangle ObjectRect(MapObject o, Vector2 origin)
     {
         var tex = Sprites.Object(o.Sprite);
-        float w = tex.Id != 0 ? tex.Width : 24, h = tex.Id != 0 ? tex.Height : 40;
+        float w = tex.Id != 0 ? tex.Width : 48, h = tex.Id != 0 ? tex.Height : 80;
         var foot = origin + IsoMath.TileToScreen(o.X, o.Y);
         // floor: odd widths and fractional positions would land texels between screen pixels
         return new Rectangle(MathF.Floor(foot.X - w / 2), MathF.Floor(foot.Y - h), w, h);

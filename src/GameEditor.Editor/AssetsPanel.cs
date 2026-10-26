@@ -32,14 +32,14 @@ public static class AssetsPanel
                 {
                     var tex = Sprites.Tile(i);
                     if (tex.Id == 0 && i >= MapRenderer.Palette.Length) continue; // id gap in tiles/: nothing to show
-                    Wrap(ref any, IsoMath.TileWidth);
+                    Wrap(ref any, IsoMath.TileWidth / 2f); // half size: 128px tiles would crowd the panel
                     ImGui.PushID(i); // constant labels: no per-frame string allocation
                     bool clicked;
-                    if (tex.Id != 0) clicked = rlImGui.ImageButton("##t", tex);
+                    if (tex.Id != 0) clicked = rlImGui.ImageButtonSize("##t", tex, new(tex.Width / 2f, tex.Height / 2f));
                     else
                     {
                         var c = MapRenderer.Palette[i];
-                        clicked = ImGui.ColorButton("##t", new Vector4(c.R, c.G, c.B, c.A) / 255f, ImGuiColorEditFlags.NoTooltip, new(IsoMath.TileWidth, IsoMath.TileHeight));
+                        clicked = ImGui.ColorButton("##t", new Vector4(c.R, c.G, c.B, c.A) / 255f, ImGuiColorEditFlags.NoTooltip, new(IsoMath.TileWidth / 2f, IsoMath.TileHeight / 2f));
                     }
                     var min = ImGui.GetItemRectMin();
                     var max = ImGui.GetItemRectMax();
@@ -71,9 +71,9 @@ public static class AssetsPanel
                 int k = 0;
                 foreach (var (name, tex) in Sprites.Objects)
                 {
-                    Wrap(ref any, tex.Width);
+                    Wrap(ref any, tex.Width / 2f);
                     ImGui.PushID(k++);
-                    if (rlImGui.ImageButton("##o", tex))
+                    if (rlImGui.ImageButtonSize("##o", tex, new(tex.Width / 2f, tex.Height / 2f)))
                         objectPanels.SelectedId = service.AddObject(name, map.Width / 2f, map.Height / 2f, name).Id;
                     bool solid = map.SolidSprites.Contains(name);
                     if (solid)

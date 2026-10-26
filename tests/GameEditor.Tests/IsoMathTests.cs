@@ -19,15 +19,15 @@ public class IsoMathTests
     }
 
     [Theory]
-    // tile (0,0) diamond: top (0,0), right (32,16), bottom (0,32), left (-32,16)
-    [InlineData(31, 16, 0, 0)]   // just inside right vertex
-    [InlineData(33, 16, 1, -1)]  // just past right vertex
-    [InlineData(-31, 16, 0, 0)]  // just inside left vertex
-    [InlineData(-33, 16, -1, 1)] // just past left vertex
-    [InlineData(0, 31, 0, 0)]    // just above bottom vertex
-    [InlineData(0, 33, 1, 1)]    // just below bottom vertex
-    [InlineData(15, 8, 0, 0)]    // below top-right edge y=x/2 -> inside
-    [InlineData(17, 8, 0, -1)]   // above top-right edge -> neighbor (0,-1)
+    // tile (0,0) diamond: top (0,0), right (64,32), bottom (0,64), left (-64,32)
+    [InlineData(63, 32, 0, 0)]   // just inside right vertex
+    [InlineData(65, 32, 1, -1)]  // just past right vertex
+    [InlineData(-63, 32, 0, 0)]  // just inside left vertex
+    [InlineData(-65, 32, -1, 1)] // just past left vertex
+    [InlineData(0, 63, 0, 0)]    // just above bottom vertex
+    [InlineData(0, 65, 1, 1)]    // just below bottom vertex
+    [InlineData(31, 16, 0, 0)]    // below top-right edge y=x/2 -> inside
+    [InlineData(33, 16, 0, -1)]   // above top-right edge -> neighbor (0,-1)
     public void EdgePoints_FallInCorrectTile(float sx, float sy, int x, int y) =>
         Assert.Equal(new TileCoord(x, y), IsoMath.ScreenToTile(new Vector2(sx, sy)));
 

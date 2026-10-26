@@ -30,7 +30,7 @@ Raylib.SetConfigFlags(ConfigFlags.ResizableWindow | ConfigFlags.VSyncHint);
 Raylib.InitWindow(1280, 720, name ?? "Game");
 Sprites.Load(Path.Combine(AppContext.BaseDirectory, "assets"));
 Raylib.SetExitKey(KeyboardKey.Null); // Esc quits only when pressed twice; window X still closes at once
-var camera = new Camera2D { Zoom = 2f };
+var camera = new Camera2D { Zoom = 1f };
 double quitUntil = 0;
 
 while (!Raylib.WindowShouldClose())

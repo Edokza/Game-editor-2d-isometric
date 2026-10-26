@@ -2,11 +2,11 @@ using System.Numerics;
 
 namespace GameEditor.Domain;
 
-/// <summary>64×32 diamond tiles. Screen point of a tile = its top vertex; tile (0,0) top vertex at origin.</summary>
+/// <summary>128×64 diamond tiles. Screen point of a tile = its top vertex; tile (0,0) top vertex at origin.</summary>
 public static class IsoMath
 {
-    public const int TileWidth = 64;
-    public const int TileHeight = 32;
+    public const int TileWidth = 128;
+    public const int TileHeight = 64;
     private const float HalfW = TileWidth / 2f;
     private const float HalfH = TileHeight / 2f;
 
