@@ -538,4 +538,40 @@ public class MapEditingServiceTests
         svc.Fill(new TileCoord(128, 128), 1);
         Assert.Equal(MapEditingService.MaxSize * MapEditingService.MaxSize, Count(svc.Map, 1));
     }
+
+    [Fact]
+    public void FillRect_ChangesBox_SingleUndoRevertsAll_CornerOrderIrrelevant()
+    {
+        var svc = new MapEditingService(new TileMap(8, 8), new FakeMapRepository());
+        svc.FillRect(new TileCoord(2, 2), new TileCoord(4, 3), 1);
+        Assert.Equal(6, Count(svc.Map, 1));
+        Assert.Equal(1, svc.Map.Get(new TileCoord(4, 3)));
+        Assert.Equal(0, svc.Map.Get(new TileCoord(5, 3)));
+        Assert.True(svc.Undo());
+        Assert.Equal(64, Count(svc.Map, 0));
+        Assert.False(svc.CanUndo);
+        svc.FillRect(new TileCoord(4, 3), new TileCoord(2, 2), 1);
+        Assert.Equal(6, Count(svc.Map, 1));
+        Assert.Equal(1, svc.Map.Get(new TileCoord(2, 2)));
+    }
+
+    [Fact]
+    public void FillRect_OverEdge_FillsOnlyInside()
+    {
+        var svc = new MapEditingService(new TileMap(4, 4), new FakeMapRepository());
+        svc.FillRect(new TileCoord(2, -3), new TileCoord(9, 1), 1);
+        Assert.Equal(4, Count(svc.Map, 1)); // x 2..3, y 0..1
+        Assert.Equal(1, svc.Map.Get(new TileCoord(3, 0)));
+    }
+
+    [Fact]
+    public void FillRect_OutsideMapOrSameId_NoOp()
+    {
+        var svc = new MapEditingService(new TileMap(4, 4), new FakeMapRepository());
+        svc.FillRect(new TileCoord(5, 5), new TileCoord(9, 9), 1);
+        svc.FillRect(new TileCoord(-3, 0), new TileCoord(-1, 3), 1);
+        svc.FillRect(new TileCoord(0, 0), new TileCoord(3, 3), 0);
+        Assert.False(svc.CanUndo);
+        Assert.False(svc.IsDirty);
+    }
 }

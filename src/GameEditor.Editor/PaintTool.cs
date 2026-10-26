@@ -6,12 +6,13 @@ using Raylib_cs;
 
 namespace GameEditor.Editor;
 
-public enum PaintMode { Brush, Fill }
+public enum PaintMode { Brush, Fill, Rect }
 
-/// <summary>Left-drag: on an object moves it, elsewhere paints tiles (Fill: one click floods the region). Right-click picks the tile under the mouse. Called by ScenePanel inside its texture mode; mouse is panel-local.</summary>
+/// <summary>Left-drag: on an object moves it, elsewhere paints tiles (Fill: one click floods the region; Rect: press = first corner, release fills the box). Right-click picks the tile under the mouse. Called by ScenePanel inside its texture mode; mouse is panel-local.</summary>
 public sealed class PaintTool(MapEditingService service, ObjectPanels objectPanels)
 {
     private bool _painting;
+    private TileCoord? _rectStart;
     private (int Id, Vector2 Grab, int Token)? _drag; // Grab = mouse minus object position, tile space
 
     public int TileId { get; set; } = 1;
@@ -33,7 +34,7 @@ public sealed class PaintTool(MapEditingService service, ObjectPanels objectPane
         // eyedropper: only swaps TileId, so an open stroke/drag keeps going and Mode stays
         if (sceneHovered && map.InBounds(hover) && Raylib.IsMouseButtonPressed(MouseButton.Right)) TileId = map.Get(hover);
 
-        if (!_painting && _drag is null && sceneHovered && Raylib.IsMouseButtonPressed(MouseButton.Left))
+        if (!_painting && _drag is null && _rectStart is null && sceneHovered && Raylib.IsMouseButtonPressed(MouseButton.Left))
         {
             if (MapRenderer.ObjectAt(map, Vector2.Zero, world) is { } hit)
             {
@@ -41,6 +42,7 @@ public sealed class PaintTool(MapEditingService service, ObjectPanels objectPane
                 _drag = (hit.Id, IsoMath.ScreenToTileF(world) - new Vector2(hit.X, hit.Y), service.BeginObjectEdit(hit.Id));
             }
             else if (Mode == PaintMode.Fill) service.Fill(hover, TileId);
+            else if (Mode == PaintMode.Rect) _rectStart = hover;
             else
             {
                 service.BeginStroke();
@@ -71,6 +73,24 @@ public sealed class PaintTool(MapEditingService service, ObjectPanels objectPane
             {
                 service.EndStroke();
                 _painting = false;
+            }
+        }
+
+        if (_rectStart is { } r)
+        {
+            // button state like the stroke; highlights the same clamped box FillRect fills
+            if (Raylib.IsMouseButtonDown(MouseButton.Left))
+            {
+                Raylib.BeginMode2D(camera);
+                for (int y = Math.Max(Math.Min(r.Y, hover.Y), 0); y <= Math.Min(Math.Max(r.Y, hover.Y), map.Height - 1); y++)
+                    for (int x = Math.Max(Math.Min(r.X, hover.X), 0); x <= Math.Min(Math.Max(r.X, hover.X), map.Width - 1); x++)
+                        MapRenderer.DrawHighlight(new TileCoord(x, y), Vector2.Zero, Color.Yellow);
+                Raylib.EndMode2D();
+            }
+            else
+            {
+                service.FillRect(r, hover, TileId);
+                _rectStart = null;
             }
         }
     }

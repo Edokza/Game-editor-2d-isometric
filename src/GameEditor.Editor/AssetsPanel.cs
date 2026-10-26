@@ -20,6 +20,8 @@ public static class AssetsPanel
         if (ImGui.RadioButton("Brush (B)", tool.Mode == PaintMode.Brush)) tool.Mode = PaintMode.Brush;
         ImGui.SameLine();
         if (ImGui.RadioButton("Fill (G)", tool.Mode == PaintMode.Fill)) tool.Mode = PaintMode.Fill;
+        ImGui.SameLine();
+        if (ImGui.RadioButton("Rect (R)", tool.Mode == PaintMode.Rect)) tool.Mode = PaintMode.Rect;
         if (ImGui.BeginTabBar("assets"))
         {
             if (ImGui.BeginTabItem("Tiles"))

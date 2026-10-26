@@ -66,6 +66,18 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
         Do(new PaintTilesCommand(Map, changes));
     }
 
+    /// <summary>Every cell in the box with corners <paramref name="a"/> and <paramref name="b"/> (any order), clamped to the map; one undo step.
+    /// No-op when no cell changes.</summary>
+    public void FillRect(TileCoord a, TileCoord b, int tileId)
+    {
+        Flush();
+        var changes = new Dictionary<TileCoord, (int Old, int New)>();
+        for (int y = Math.Max(Math.Min(a.Y, b.Y), 0); y <= Math.Min(Math.Max(a.Y, b.Y), Map.Height - 1); y++)
+            for (int x = Math.Max(Math.Min(a.X, b.X), 0); x <= Math.Min(Math.Max(a.X, b.X), Map.Width - 1); x++)
+                if (Map.Get(new TileCoord(x, y)) is var old && old != tileId) changes[new TileCoord(x, y)] = (old, tileId);
+        if (changes.Count > 0) Do(new PaintTilesCommand(Map, changes));
+    }
+
     /// <summary>Appends at (<paramref name="x"/>, <paramref name="y"/>) tile space with a fresh id.
     /// A spawn when one exists moves that one instead: the hero has one spawn point.</summary>
     public MapObject AddObject(string name, float x, float y, string? sprite = null)

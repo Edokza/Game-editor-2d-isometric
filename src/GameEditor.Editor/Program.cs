@@ -43,6 +43,7 @@ while (!quit)
         }
         else if (Raylib.IsKeyPressed(KeyboardKey.B)) paintTool.Mode = PaintMode.Brush;
         else if (Raylib.IsKeyPressed(KeyboardKey.G)) paintTool.Mode = PaintMode.Fill;
+        else if (Raylib.IsKeyPressed(KeyboardKey.R)) paintTool.Mode = PaintMode.Rect;
     }
     ImGui.DockSpaceOverViewport(0, ImGui.GetMainViewport(), ImGuiDockNodeFlags.PassthruCentralNode);
 
