@@ -8,6 +8,7 @@ using Raylib_cs;
 using rlImGui_cs;
 
 const int MapSize = 20;
+const uint DockId = 0x6D61696E; // fixed, not 0: DockLayout must know the id before DockSpaceOverViewport makes it
 var docs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "GameEditor");
 var service = new MapEditingService(new TileMap(MapSize, MapSize), new JsonMapRepository(Path.Combine(docs, "maps")));
 var fileMenu = new FileMenu(service, docs);
@@ -15,6 +16,7 @@ var objectPanels = new ObjectPanels(service);
 var paintTool = new PaintTool(service, objectPanels);
 var scenePanel = new ScenePanel(service, paintTool, objectPanels);
 var quit = false;
+var layoutChecked = false;
 
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow | ConfigFlags.VSyncHint);
 var version = typeof(Program).Assembly.GetName().Version!.ToString(3);
@@ -66,13 +68,16 @@ while (!quit)
         else if (Raylib.IsKeyPressed(KeyboardKey.R)) paintTool.Mode = PaintMode.Rect;
         else if (Raylib.IsKeyPressed(KeyboardKey.Delete) && objectPanels.SelectedId is { } id) service.RemoveObject(id);
     }
-    ImGui.DockSpaceOverViewport(0, ImGui.GetMainViewport(), ImGuiDockNodeFlags.PassthruCentralNode);
+    // first frame: build only when there's no saved layout, so the user's own arrangement is kept
+    if (fileMenu.ResetLayout || (!layoutChecked && DockLayout.IsEmpty(DockId)))
+        DockLayout.Build(DockId, ImGui.GetMainViewport().WorkSize);
+    fileMenu.ResetLayout = false;
+    layoutChecked = true;
+    ImGui.DockSpaceOverViewport(DockId, ImGui.GetMainViewport(), ImGuiDockNodeFlags.PassthruCentralNode);
 
     if (ImGui.BeginMainMenuBar())
     {
-        ImGui.BeginDisabled(play is not null); // edits would land on the editor map, invisible until Stop
-        fileMenu.DrawMenu(scenePanel);
-        ImGui.EndDisabled();
+        fileMenu.DrawMenu(scenePanel, play is not null);
         if (ImGui.MenuItem(play is null ? "Play" : "Stop")) scenePanel.Play = play is null ? new PlaySession(service.Map) : null;
         // Hover is last frame's: InBounds guards a resize/load since then; play: Update doesn't run, so it's stale
         if (play is null && paintTool.Hover is { } h && service.Map.InBounds(h))

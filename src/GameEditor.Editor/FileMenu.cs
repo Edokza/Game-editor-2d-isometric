@@ -28,6 +28,9 @@ public sealed class FileMenu(MapEditingService service, string docs)
     private bool _exportAfterSave;
     private (Result Status, string Folder)? _exported; // "Open folder" shows while _status is still this export's
 
+    /// <summary>Set by View > Reset Layout; Program.cs rebuilds before the next DockSpaceOverViewport and clears it.</summary>
+    public bool ResetLayout { get; set; }
+
     /// <summary>Runs <paramref name="onDiscard"/> now if clean, else after the user confirms.</summary>
     public void ConfirmDiscard(Action onDiscard)
     {
@@ -51,8 +54,9 @@ public sealed class FileMenu(MapEditingService service, string docs)
     }
 
     /// <summary>Call between BeginMainMenuBar/EndMainMenuBar.</summary>
-    public void DrawMenu(ScenePanel scene)
+    public void DrawMenu(ScenePanel scene, bool play)
     {
+        ImGui.BeginDisabled(play); // edits would land on the editor map, invisible until Stop
         if (ImGui.BeginMenu("File"))
         {
             if (ImGui.MenuItem("New...", "Ctrl+N")) New();
@@ -71,9 +75,11 @@ public sealed class FileMenu(MapEditingService service, string docs)
             if (ImGui.MenuItem("Resize Map...")) _openResize = true;
             ImGui.EndMenu();
         }
-        if (ImGui.BeginMenu("View"))
+        ImGui.EndDisabled();
+        if (ImGui.BeginMenu("View")) // usable during play: touches no map
         {
             if (ImGui.MenuItem("Grid", "", scene.Grid)) scene.Grid = !scene.Grid; // no shortcut: G is Fill
+            if (ImGui.MenuItem("Reset Layout")) ResetLayout = true;
             ImGui.EndMenu();
         }
 
