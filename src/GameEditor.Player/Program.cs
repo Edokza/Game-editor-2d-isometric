@@ -29,10 +29,18 @@ catch (Exception e)
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow | ConfigFlags.VSyncHint);
 Raylib.InitWindow(1280, 720, name ?? "Game");
 Sprites.Load(Path.Combine(AppContext.BaseDirectory, "assets"));
+Raylib.SetExitKey(KeyboardKey.Null); // Esc quits only when pressed twice; window X still closes at once
 var camera = new Camera2D { Zoom = 2f };
+double quitUntil = 0;
 
 while (!Raylib.WindowShouldClose())
 {
+    if (Raylib.IsKeyPressed(KeyboardKey.F11)) Raylib.ToggleBorderlessWindowed();
+    if (Raylib.IsKeyPressed(KeyboardKey.Escape))
+    {
+        if (Raylib.GetTime() < quitUntil) break;
+        quitUntil = Raylib.GetTime() + 2;
+    }
     Raylib.BeginDrawing();
     Raylib.ClearBackground(new Color(30, 30, 36, 255));
     if (play is null) Raylib.DrawText(error, 20, 20, 20, Color.RayWhite);
@@ -46,6 +54,7 @@ while (!Raylib.WindowShouldClose())
         MapRenderer.DrawObjects(play.Map, Vector2.Zero, null);
         Raylib.EndMode2D();
     }
+    if (Raylib.GetTime() < quitUntil) Raylib.DrawText("Press Esc again to quit", 20, Raylib.GetScreenHeight() - 40, 20, Color.RayWhite);
     Raylib.EndDrawing();
 }
 

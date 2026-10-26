@@ -5,9 +5,13 @@ public sealed class TileMap
     private readonly int[] _tiles;
     private readonly List<MapObject> _objects = [];
     private readonly HashSet<int> _solid;
+    private readonly HashSet<string> _solidSprites;
 
     /// <summary>assets/tiles ids: 1 water, 6 dirt_block, 7 stone_block. Used when a map doesn't list its own.</summary>
     public static readonly IReadOnlyList<int> DefaultSolid = [1, 6, 7];
+
+    /// <summary>assets/objects sprites whose tile the hero can't enter. Used when a map doesn't list its own.</summary>
+    public static readonly IReadOnlyList<string> DefaultSolidSprites = ["crate", "rock", "tree"];
 
     public int Width { get; }
     public int Height { get; }
@@ -15,7 +19,9 @@ public sealed class TileMap
     public TileMap(int width, int height) : this(width, height, new int[checked(width * height)]) { }
 
     /// <param name="solid">Tile ids the hero can't enter; null → <see cref="DefaultSolid"/>. Copied.</param>
-    public TileMap(int width, int height, int[] tiles, IEnumerable<MapObject>? objects = null, IEnumerable<int>? solid = null)
+    /// <param name="solidSprites">Object sprites the hero can't walk into; null → <see cref="DefaultSolidSprites"/>. Copied.</param>
+    public TileMap(int width, int height, int[] tiles, IEnumerable<MapObject>? objects = null, IEnumerable<int>? solid = null,
+        IEnumerable<string>? solidSprites = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
@@ -26,6 +32,7 @@ public sealed class TileMap
         Height = height;
         _tiles = [.. tiles];
         _solid = [.. solid ?? DefaultSolid];
+        _solidSprites = [.. solidSprites ?? DefaultSolidSprites];
         var ids = new HashSet<int>(); // not Insert: its IndexOf per object is O(n²) on big files
         foreach (var o in objects ?? [])
         {
@@ -54,6 +61,14 @@ public sealed class TileMap
     {
         if (solid) _solid.Add(tileId);
         else _solid.Remove(tileId);
+    }
+
+    public IReadOnlySet<string> SolidSprites => _solidSprites;
+
+    internal void SetSolidSprite(string sprite, bool solid)
+    {
+        if (solid) _solidSprites.Add(sprite);
+        else _solidSprites.Remove(sprite);
     }
 
     /// <summary>Draw/list order.</summary>

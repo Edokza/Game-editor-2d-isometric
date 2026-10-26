@@ -6,17 +6,20 @@ A small isometric tile map editor built with .NET 10, Raylib and Dear ImGui. Pai
 
 - Isometric 64×32 tiles: click/drag to paint, one stroke = one undo step
 - Bucket fill: flood-fill connected tiles of the same id (4-way), one undo step
+- Rectangle tool: drag a box, release to fill every tile in it, one undo step
 - Eyedropper: right-click a tile in the Scene to pick it as the paint tile
-- Map size: New asks for width × height, Edit → Resize Map changes it (1–256 each). Resize clears undo and drops objects outside the new size
+- Map size: New asks for width × height, Edit → Resize Map changes it (1–256 each). Resize drops objects outside the new size and can be undone
 - Solid tiles per map: right-click a tile in Assets to toggle Solid (red corner mark), saved in the map file
+- Solid objects per map: right-click an object in Assets to toggle Solid; the hero can't enter a tile holding one (default: tree, rock, crate)
 - Hero spawn marker: add the `spawn` object to set where Play starts (one per map; adding another moves it). No spawn = map center
 - Pan and zoom (zoom snaps to whole numbers at 1× and above for crisp pixels)
-- Dockable Scene, Assets, Hierarchy and Inspector panels
-- Map objects: add, delete, rename, drag in the scene, depth-sorted drawing
+- Dockable Scene, Assets, Hierarchy and Inspector panels with a default layout; View → Reset Layout restores it
+- View → Grid: tile outlines over the map; the menu bar shows the tile `(x, y)` and id under the mouse
+- Map objects: add, delete, duplicate, rename, drag in the scene, depth-sorted drawing
 - Assets panel built from PNG sprites (tiles, objects, characters)
 - Undo/redo for every edit
 - Multiple maps: New / Open / Save / Save As, with an unsaved-changes prompt
-- Play mode: walk a hero around the map, blocked by solid tiles; the camera follows the hero
+- Play mode: walk a hero around the map, blocked by solid tiles and objects, facing the way it walks; the camera follows the hero
 - File → Export Game: a playable folder (exe + map) that runs without .NET or the editor
 
 ## Requirements
@@ -38,12 +41,15 @@ dotnet run --project src/GameEditor.Editor
 | Input | Action |
 |---|---|
 | Left click / drag | Paint the selected tile, or drag an object |
-| B / G | Brush / Fill tool |
+| B / G / R | Brush / Fill / Rectangle tool |
 | Right click (Scene) | Pick the tile under the cursor |
-| Right click (Assets tile) | Toggle Solid |
+| Right click (Assets tile or object) | Toggle Solid |
 | Middle drag | Pan (not in Play mode) |
 | Mouse wheel | Zoom toward the cursor (screen center in Play mode) |
 | Ctrl+Z / Ctrl+Y | Undo / Redo |
+| Ctrl+N / Ctrl+O | New / Open |
+| Ctrl+S / Ctrl+Shift+S | Save / Save As |
+| Delete / Ctrl+D | Delete / duplicate the selected object |
 | Play / Stop (menu bar) | Enter / leave Play mode |
 | WASD / arrow keys | Walk the hero (Play mode) |
 
@@ -57,7 +63,7 @@ Sprites live in `assets/` and are copied next to the executable on build.
 assets/
   tiles/<id>_<name>.png     e.g. 0_grass.png, 6_dirt_block.png
   objects/<name>.png        e.g. tree.png, spawn.png (hero spawn marker)
-  characters/<name>.png     hero_se.png, hero_ne.png
+  characters/<name>.png     hero_se.png, hero_ne.png, hero_sw.png, hero_nw.png
 ```
 
 - Tile base is 64×32. Taller images (blocks) are allowed.
@@ -79,11 +85,12 @@ The editor saves to `Documents/GameEditor/maps/<name>.json`:
     { "Id": 1, "Name": "tree", "X": 3.5, "Y": 4.5, "Sprite": "tree" },
     { "Id": 2, "Name": "spawn", "X": 10.5, "Y": 10.5, "Sprite": "spawn" }
   ],
-  "Solid": [1, 6, 7]
+  "Solid": [1, 6, 7],
+  "SolidSprites": ["crate", "rock", "tree"]
 }
 ```
 
-`Tiles` is row-major (`y * Width + x`). `Objects`, `Sprite` and `Solid` are optional. A missing `Solid` means the defaults `[1, 6, 7]`; `[]` means nothing is solid. The first object with sprite `spawn` is the hero's start. Names may not contain `..`, `/`, `\` or other invalid file name characters.
+`Tiles` is row-major (`y * Width + x`). `Objects`, `Sprite`, `Solid` and `SolidSprites` are optional. A missing `Solid` means the defaults `[1, 6, 7]`, a missing `SolidSprites` means `["crate", "rock", "tree"]`; `[]` means nothing is solid. A solid object blocks the tile it stands on. The first object with sprite `spawn` is the hero's start. Names may not contain `..`, `/`, `\` or other invalid file name characters.
 
 ## Export
 
@@ -106,6 +113,8 @@ Run a saved map without exporting:
 ```bash
 dotnet run --project src/GameEditor.Player -- <map name>
 ```
+
+In the game: WASD / arrow keys walk, F11 toggles fullscreen, Esc twice quits.
 
 With no name, the first map is loaded. The Player reads maps from `maps/` next to its exe if it contains any `.json`, otherwise from `Documents/GameEditor/maps`.
 
@@ -144,4 +153,3 @@ Player ─┤                                      ^
 - One tile layer only.
 - Windows x64 only for the published Player.
 - Export is a folder (exe + `maps/`), not a single file, and holds one map.
-- Resize Map clears the undo history.

@@ -20,6 +20,8 @@ public static class AssetsPanel
         if (ImGui.RadioButton("Brush (B)", tool.Mode == PaintMode.Brush)) tool.Mode = PaintMode.Brush;
         ImGui.SameLine();
         if (ImGui.RadioButton("Fill (G)", tool.Mode == PaintMode.Fill)) tool.Mode = PaintMode.Fill;
+        ImGui.SameLine();
+        if (ImGui.RadioButton("Rect (R)", tool.Mode == PaintMode.Rect)) tool.Mode = PaintMode.Rect;
         if (ImGui.BeginTabBar("assets"))
         {
             if (ImGui.BeginTabItem("Tiles"))
@@ -73,7 +75,19 @@ public static class AssetsPanel
                     ImGui.PushID(k++);
                     if (rlImGui.ImageButton("##o", tex))
                         objectPanels.SelectedId = service.AddObject(name, map.Width / 2f, map.Height / 2f, name).Id;
-                    if (ImGui.IsItemHovered()) Tooltip(name);
+                    bool solid = map.SolidSprites.Contains(name);
+                    if (solid)
+                    {
+                        var min = ImGui.GetItemRectMin();
+                        var max = ImGui.GetItemRectMax();
+                        ImGui.GetWindowDrawList().AddTriangleFilled(new(max.X - 12, min.Y), new(max.X, min.Y), new(max.X, min.Y + 12), ImGui.GetColorU32(SolidMark));
+                    }
+                    if (ImGui.IsItemHovered()) Tooltip(solid ? name + " (Solid)" : name);
+                    if (ImGui.BeginPopupContextItem("solid"))
+                    {
+                        if (ImGui.MenuItem("Solid", "", solid)) service.SetSolidSprite(name, !solid);
+                        ImGui.EndPopup();
+                    }
                     ImGui.PopID();
                 }
                 if (Sprites.Objects.Count == 0) ImGui.TextDisabled("(no assets/objects/*.png)");

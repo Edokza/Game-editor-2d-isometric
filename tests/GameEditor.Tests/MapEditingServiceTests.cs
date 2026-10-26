@@ -253,11 +253,30 @@ public class MapEditingServiceTests
     }
 
     [Fact]
+    public void SetSolidSprite_OneUndoStep_Dirty_NoOpWhenSame()
+    {
+        var svc = new MapEditingService(new TileMap(2, 2), new FakeMapRepository());
+        svc.SetSolidSprite("tree", true); // already solid
+        Assert.False(svc.CanUndo);
+        Assert.False(svc.IsDirty);
+
+        svc.SetSolidSprite("tree", false);
+        Assert.True(svc.IsDirty);
+        Assert.Equal(["crate", "rock"], svc.Map.SolidSprites.Order());
+
+        svc.Undo();
+        Assert.Equal(["crate", "rock", "tree"], svc.Map.SolidSprites.Order());
+        svc.Redo();
+        Assert.Equal(["crate", "rock"], svc.Map.SolidSprites.Order());
+    }
+
+    [Fact]
     public void Resize_KeepsSolid_NewResetsToDefault()
     {
-        var svc = new MapEditingService(new TileMap(4, 4, new int[16], solid: [3]), new FakeMapRepository());
+        var svc = new MapEditingService(new TileMap(4, 4, new int[16], solid: [3], solidSprites: ["bush"]), new FakeMapRepository());
         svc.Resize(5, 5);
         Assert.Equal([3], svc.Map.Solid);
+        Assert.Equal(["bush"], svc.Map.SolidSprites);
         svc.New(2, 2); // Discard must drop unsaved Solid edits too
         Assert.Equal([1, 6, 7], svc.Map.Solid.Order());
         Assert.False(svc.IsDirty);
@@ -292,7 +311,7 @@ public class MapEditingServiceTests
     }
 
     [Fact]
-    public void Resize_KeepsTopLeftDropsOutsideObjects_ClearsUndo()
+    public void Resize_KeepsTopLeftDropsOutsideObjects_OneUndoStep()
     {
         var svc = new MapEditingService(new TileMap(20, 20), new FakeMapRepository());
         svc.BeginStroke();
@@ -310,10 +329,72 @@ public class MapEditingServiceTests
         Assert.Equal(0, svc.Map.Get(new TileCoord(5, 25)));
         Assert.Equal(-1, svc.Map.IndexOf(outside.Id));
         Assert.Equal(inside, Assert.Single(svc.Map.Objects));
-        Assert.False(svc.CanUndo);
+        Assert.True(svc.CanUndo);
         Assert.False(svc.CanRedo);
         Assert.True(svc.IsDirty);
         Assert.Equal("a", svc.CurrentName);
+    }
+
+    [Fact]
+    public void Resize_Undo_RestoresMapAndOlderSteps()
+    {
+        var svc = new MapEditingService(new TileMap(20, 20), new FakeMapRepository());
+        svc.BeginStroke();
+        svc.Paint(new TileCoord(5, 5), 2);
+        svc.EndStroke();
+        var outside = svc.AddObject("out", 15, 3);
+
+        svc.Resize(10, 30);
+        Assert.True(svc.Undo());
+        Assert.Equal((20, 20), (svc.Map.Width, svc.Map.Height));
+        Assert.Equal(2, svc.Map.Get(new TileCoord(5, 5)));
+        Assert.Equal(outside, svc.Map.Objects[svc.Map.IndexOf(outside.Id)]);
+
+        Assert.True(svc.Undo()); // AddObject
+        Assert.True(svc.Undo()); // stroke, on the restored map
+        Assert.Equal(0, svc.Map.Get(new TileCoord(5, 5)));
+
+        Assert.True(svc.Redo());
+        Assert.True(svc.Redo());
+        Assert.True(svc.Redo());
+        Assert.Equal((10, 30), (svc.Map.Width, svc.Map.Height));
+        Assert.Equal(2, svc.Map.Get(new TileCoord(5, 5)));
+    }
+
+    [Fact]
+    public void Resize_PaintAfter_UndoesStepByStep()
+    {
+        var svc = new MapEditingService(new TileMap(20, 20), new FakeMapRepository());
+        svc.Resize(10, 30);
+        svc.BeginStroke();
+        svc.Paint(new TileCoord(5, 25), 4);
+        svc.EndStroke();
+
+        Assert.True(svc.Undo());
+        Assert.Equal((10, 30), (svc.Map.Width, svc.Map.Height));
+        Assert.Equal(0, svc.Map.Get(new TileCoord(5, 25)));
+        Assert.True(svc.Undo());
+        Assert.Equal((20, 20), (svc.Map.Width, svc.Map.Height));
+        Assert.False(svc.CanUndo);
+        Assert.True(svc.Redo());
+        Assert.True(svc.Redo());
+        Assert.Equal(4, svc.Map.Get(new TileCoord(5, 25)));
+    }
+
+    [Fact]
+    public void Resize_DuringStroke_FlushesSeparateStep()
+    {
+        var svc = new MapEditingService(new TileMap(20, 20), new FakeMapRepository());
+        svc.BeginStroke();
+        svc.Paint(new TileCoord(5, 5), 2);
+        svc.Resize(10, 10);
+
+        Assert.True(svc.Undo());
+        Assert.Equal((20, 20), (svc.Map.Width, svc.Map.Height));
+        Assert.Equal(2, svc.Map.Get(new TileCoord(5, 5)));
+        Assert.True(svc.Undo());
+        Assert.Equal(0, svc.Map.Get(new TileCoord(5, 5)));
+        Assert.False(svc.CanUndo);
     }
 
     [Fact]
@@ -456,5 +537,41 @@ public class MapEditingServiceTests
         var svc = new MapEditingService(new TileMap(MapEditingService.MaxSize, MapEditingService.MaxSize), new FakeMapRepository());
         svc.Fill(new TileCoord(128, 128), 1);
         Assert.Equal(MapEditingService.MaxSize * MapEditingService.MaxSize, Count(svc.Map, 1));
+    }
+
+    [Fact]
+    public void FillRect_ChangesBox_SingleUndoRevertsAll_CornerOrderIrrelevant()
+    {
+        var svc = new MapEditingService(new TileMap(8, 8), new FakeMapRepository());
+        svc.FillRect(new TileCoord(2, 2), new TileCoord(4, 3), 1);
+        Assert.Equal(6, Count(svc.Map, 1));
+        Assert.Equal(1, svc.Map.Get(new TileCoord(4, 3)));
+        Assert.Equal(0, svc.Map.Get(new TileCoord(5, 3)));
+        Assert.True(svc.Undo());
+        Assert.Equal(64, Count(svc.Map, 0));
+        Assert.False(svc.CanUndo);
+        svc.FillRect(new TileCoord(4, 3), new TileCoord(2, 2), 1);
+        Assert.Equal(6, Count(svc.Map, 1));
+        Assert.Equal(1, svc.Map.Get(new TileCoord(2, 2)));
+    }
+
+    [Fact]
+    public void FillRect_OverEdge_FillsOnlyInside()
+    {
+        var svc = new MapEditingService(new TileMap(4, 4), new FakeMapRepository());
+        svc.FillRect(new TileCoord(2, -3), new TileCoord(9, 1), 1);
+        Assert.Equal(4, Count(svc.Map, 1)); // x 2..3, y 0..1
+        Assert.Equal(1, svc.Map.Get(new TileCoord(3, 0)));
+    }
+
+    [Fact]
+    public void FillRect_OutsideMapOrSameId_NoOp()
+    {
+        var svc = new MapEditingService(new TileMap(4, 4), new FakeMapRepository());
+        svc.FillRect(new TileCoord(5, 5), new TileCoord(9, 9), 1);
+        svc.FillRect(new TileCoord(-3, 0), new TileCoord(-1, 3), 1);
+        svc.FillRect(new TileCoord(0, 0), new TileCoord(3, 3), 0);
+        Assert.False(svc.CanUndo);
+        Assert.False(svc.IsDirty);
     }
 }

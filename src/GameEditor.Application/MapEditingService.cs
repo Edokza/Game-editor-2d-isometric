@@ -66,6 +66,18 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
         Do(new PaintTilesCommand(Map, changes));
     }
 
+    /// <summary>Every cell in the box with corners <paramref name="a"/> and <paramref name="b"/> (any order), clamped to the map; one undo step.
+    /// No-op when no cell changes.</summary>
+    public void FillRect(TileCoord a, TileCoord b, int tileId)
+    {
+        Flush();
+        var changes = new Dictionary<TileCoord, (int Old, int New)>();
+        for (int y = Math.Max(Math.Min(a.Y, b.Y), 0); y <= Math.Min(Math.Max(a.Y, b.Y), Map.Height - 1); y++)
+            for (int x = Math.Max(Math.Min(a.X, b.X), 0); x <= Math.Min(Math.Max(a.X, b.X), Map.Width - 1); x++)
+                if (Map.Get(new TileCoord(x, y)) is var old && old != tileId) changes[new TileCoord(x, y)] = (old, tileId);
+        if (changes.Count > 0) Do(new PaintTilesCommand(Map, changes));
+    }
+
     /// <summary>Appends at (<paramref name="x"/>, <paramref name="y"/>) tile space with a fresh id.
     /// A spawn when one exists moves that one instead: the hero has one spawn point.</summary>
     public MapObject AddObject(string name, float x, float y, string? sprite = null)
@@ -87,6 +99,13 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
     {
         Flush();
         if (Map.Solid.Contains(tileId) != solid) Do(new SolidCommand(Map, tileId, solid));
+    }
+
+    /// <summary>One undo step; no-op when already that way.</summary>
+    public void SetSolidSprite(string sprite, bool solid)
+    {
+        Flush();
+        if (Map.SolidSprites.Contains(sprite) != solid) Do(new SolidSpriteCommand(Map, sprite, solid));
     }
 
     public bool RemoveObject(int id)
@@ -184,19 +203,17 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
     }
 
     /// <summary>Keeps the top-left corner; new cells are 0, objects past the new right/bottom edge are dropped.
-    /// Clears undo: old commands hold the previous <see cref="TileMap"/>.</summary>
+    /// One undo step: undo restores the previous <see cref="TileMap"/> instance.</summary>
     public void Resize(int width, int height)
     {
         CheckSize(width, height);
-        if (width == Map.Width && height == Map.Height) return; // OK on an unchanged popup must not wipe undo
+        if (width == Map.Width && height == Map.Height) return; // OK on an unchanged popup is not an edit
         Flush();
         var tiles = new int[width * height];
         for (int y = 0; y < Math.Min(height, Map.Height); y++)
             for (int x = 0; x < Math.Min(width, Map.Width); x++)
                 tiles[y * width + x] = Map.Get(new TileCoord(x, y));
-        Map = new TileMap(width, height, tiles, Map.Objects.Where(o => o.X < width && o.Y < height), Map.Solid);
-        _undo.Clear();
-        _dirty = true;
+        Do(new ResizeCommand(m => Map = m, Map, new TileMap(width, height, tiles, Map.Objects.Where(o => o.X < width && o.Y < height), Map.Solid, Map.SolidSprites)));
     }
 
     public Result Load(string name)

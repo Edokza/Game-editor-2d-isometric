@@ -3,8 +3,9 @@ using GameEditor.Domain;
 
 namespace GameEditor.Infrastructure;
 
-/// <summary><see cref="Objects"/>/<see cref="Solid"/> optional: older files have none (Solid null → <see cref="TileMap.DefaultSolid"/>).</summary>
-internal sealed record MapDto(int Width, int Height, int[] Tiles, MapObject[]? Objects = null, int[]? Solid = null);
+/// <summary><see cref="Objects"/>/<see cref="Solid"/>/<see cref="SolidSprites"/> optional: older files have none
+/// (Solid null → <see cref="TileMap.DefaultSolid"/>, SolidSprites null → <see cref="TileMap.DefaultSolidSprites"/>).</summary>
+internal sealed record MapDto(int Width, int Height, int[] Tiles, MapObject[]? Objects = null, int[]? Solid = null, string[]? SolidSprites = null);
 
 [JsonSourceGenerationOptions(RespectNullableAnnotations = true, RespectRequiredConstructorParameters = true)]
 [JsonSerializable(typeof(MapDto))]

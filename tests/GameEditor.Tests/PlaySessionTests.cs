@@ -108,6 +108,45 @@ public class PlaySessionTests
     }
 
     [Fact]
+    public void SolidSprites_CopiedFromSource()
+    {
+        var source = new TileMap(4, 4, new int[16], solidSprites: ["bush"]);
+        var play = new PlaySession(source);
+        Assert.Equal(["bush"], play.Map.SolidSprites);
+
+        play.Map.SetSolidSprite("bush", false);
+        Assert.Equal(["bush"], source.SolidSprites); // copy, not shared
+    }
+
+    // 8×8 map, hero spawned at (spawnX, spawnY), one object with the given sprite at (5.5, 5.5)
+    private static PlaySession WithObject(string sprite, float spawnX, float spawnY) =>
+        new(new TileMap(8, 8, new int[64], [new(1, "Obj", 5.5f, 5.5f, sprite), new(2, "Spawn", spawnX, spawnY, PlaySession.SpawnSprite)]));
+
+    [Fact]
+    public void Move_StopsBeforeSolidObject()
+    {
+        var play = WithObject("tree", 4.5f, 5.5f);
+        Walk(play, 1, 0);
+        Assert.True(play.Hero.X is > 4.9f and < 5);
+    }
+
+    [Fact]
+    public void Move_NonSolidObject_WalksThrough()
+    {
+        var play = WithObject("bush", 4.5f, 5.5f);
+        Walk(play, 1, 0);
+        Assert.True(play.Hero.X >= 6);
+    }
+
+    [Fact]
+    public void Move_SpawnedOnSolidObject_CanWalkOut()
+    {
+        var play = WithObject("tree", 5.5f, 5.5f);
+        Walk(play, -1, 0);
+        Assert.True(play.Hero.X < 5);
+    }
+
+    [Fact]
     public void Move_SpawnedInSolid_CanWalkOut()
     {
         var play = Session((2, 2));
@@ -134,5 +173,19 @@ public class PlaySessionTests
         Assert.Equal("hero_ne", play.Hero.Sprite);
         play.Move(new(1, 0), 1 / 60f);
         Assert.Equal("hero_se", play.Hero.Sprite);
+    }
+
+    [Fact]
+    public void Move_SpriteFacesFourWays()
+    {
+        var play = Session();
+        play.Move(new(1, -1), 1 / 60f); // D
+        Assert.Equal("hero_ne", play.Hero.Sprite);
+        play.Move(new(-1, 1), 1 / 60f); // A
+        Assert.Equal("hero_sw", play.Hero.Sprite);
+        play.Move(new(-1, -1), 1 / 60f); // W keeps the left side
+        Assert.Equal("hero_nw", play.Hero.Sprite);
+        play.Move(default, 1 / 60f);
+        Assert.Equal("hero_nw", play.Hero.Sprite);
     }
 }
