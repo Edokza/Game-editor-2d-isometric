@@ -174,4 +174,18 @@ public class PlaySessionTests
         play.Move(new(1, 0), 1 / 60f);
         Assert.Equal("hero_se", play.Hero.Sprite);
     }
+
+    [Fact]
+    public void Move_SpriteFacesFourWays()
+    {
+        var play = Session();
+        play.Move(new(1, -1), 1 / 60f); // D
+        Assert.Equal("hero_ne", play.Hero.Sprite);
+        play.Move(new(-1, 1), 1 / 60f); // A
+        Assert.Equal("hero_sw", play.Hero.Sprite);
+        play.Move(new(-1, -1), 1 / 60f); // W keeps the left side
+        Assert.Equal("hero_nw", play.Hero.Sprite);
+        play.Move(default, 1 / 60f);
+        Assert.Equal("hero_nw", play.Hero.Sprite);
+    }
 }

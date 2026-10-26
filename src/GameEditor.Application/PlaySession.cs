@@ -37,10 +37,11 @@ public sealed class PlaySession
         var h = Hero;
         float x = Blocked(h.X, h.Y, h.X + step.X, h.Y) ? h.X : h.X + step.X;
         float y = Blocked(x, h.Y, x, h.Y + step.Y) ? h.Y : h.Y + step.Y;
-        // screen y grows with x + y, so a negative sum walks up the screen
-        float down = step.X + step.Y;
-        var sprite = down < 0 ? "hero_ne" : down > 0 ? "hero_se" : h.Sprite;
-        Map.Replace(_hero, h with { X = x, Y = y, Sprite = sprite });
+        // screen y grows with x + y, screen x with x - y; pure left/right (A/D) picks sw/ne, pure up/down (W/S) keeps the side
+        float down = step.X + step.Y, right = step.X - step.Y;
+        bool south = down != 0 ? down > 0 : right < 0;
+        bool east = right != 0 ? right > 0 : h.Sprite?.EndsWith('w') != true;
+        Map.Replace(_hero, h with { X = x, Y = y, Sprite = $"hero_{(south ? 's' : 'n')}{(east ? 'e' : 'w')}" });
     }
 
     // only entering a new tile is checked: a hero spawned inside water or a tree can still walk out

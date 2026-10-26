@@ -107,7 +107,8 @@ def spawn():  # editor-only marker: red flag on a pole, ring at the anchor; Play
 objects = {"tree": tree(), "rock": rock(), "spawn": spawn(),
            "crate": block(32, 24, ["#b08850", "#9a7442", "#c49c60"], "#a07a44", 11, True)}
 se, ne = chr_(16, None), chr_(None, 22)
-chars = {"hero_se": se, "hero_ne": ne}
+flip = lambda im: im.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+chars = {"hero_se": se, "hero_ne": ne, "hero_sw": flip(se), "hero_nw": flip(ne)}
 
 for folder, d in (("tiles", tiles), ("objects", objects), ("characters", chars)):
     os.makedirs(f"{OUT}/{folder}", exist_ok=True)
