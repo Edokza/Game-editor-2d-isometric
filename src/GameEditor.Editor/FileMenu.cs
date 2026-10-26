@@ -8,7 +8,13 @@ public sealed class FileMenu(MapEditingService service)
 {
     private const string SaveAsPopup = "Save As";
     private const string DiscardPopup = "Unsaved changes";
+    private const string NewPopup = "New Map";
+    private const string ResizePopup = "Resize Map";
+    private static readonly string SizeHint = $"1-{MapEditingService.MaxSize} tiles per side"; // built once, not per frame
     private bool _openSaveAs;
+    private bool _openNew;
+    private bool _openResize;
+    private int _width, _height;
     private bool _openDiscard;
     private Action? _onDiscard;
     private string _name = "";
@@ -32,7 +38,7 @@ public sealed class FileMenu(MapEditingService service)
     {
         if (ImGui.BeginMenu("File"))
         {
-            if (ImGui.MenuItem("New")) ConfirmDiscard(() => { service.New(); _status = null; });
+            if (ImGui.MenuItem("New...")) _openNew = true;
             if (ImGui.BeginMenu("Open"))
             {
                 if (ImGui.IsWindowAppearing()) _existing = service.ListMaps(); // disk I/O once per open, not per frame
@@ -53,6 +59,8 @@ public sealed class FileMenu(MapEditingService service)
         {
             if (ImGui.MenuItem("Undo", "Ctrl+Z", false, service.CanUndo)) service.Undo();
             if (ImGui.MenuItem("Redo", "Ctrl+Y", false, service.CanRedo)) service.Redo();
+            ImGui.Separator();
+            if (ImGui.MenuItem("Resize Map...")) _openResize = true;
             ImGui.EndMenu();
         }
 
@@ -70,7 +78,45 @@ public sealed class FileMenu(MapEditingService service)
     public void DrawPopups()
     {
         DrawSaveAs();
-        DrawDiscard();
+        DrawSize(NewPopup, ref _openNew, resize: false);
+        DrawSize(ResizePopup, ref _openResize, resize: true);
+        DrawDiscard(); // after DrawSize: New's confirm opens from there
+    }
+
+    /// <summary>Width/height modal, defaults to the current map size.</summary>
+    private void DrawSize(string id, ref bool openRequest, bool resize)
+    {
+        if (openRequest)
+        {
+            openRequest = false;
+            (_width, _height) = (service.Map.Width, service.Map.Height);
+            ImGui.OpenPopup(id);
+        }
+
+        bool open = true;
+        if (!ImGui.BeginPopupModal(id, ref open, ImGuiWindowFlags.AlwaysAutoResize)) return;
+
+        ImGui.InputInt("Width", ref _width);
+        ImGui.InputInt("Height", ref _height);
+        _width = Math.Clamp(_width, 1, MapEditingService.MaxSize);
+        _height = Math.Clamp(_height, 1, MapEditingService.MaxSize);
+        ImGui.TextDisabled(SizeHint);
+        if (resize) ImGui.TextColored(new Vector4(1, 0.8f, 0.3f, 1), "Undo history will be cleared.");
+
+        if (ImGui.Button("OK"))
+        {
+            // branch here, not a delegate parameter: DrawPopups runs every frame and must not allocate
+            if (resize) service.Resize(_width, _height);
+            else
+            {
+                (int w, int h) = (_width, _height);
+                ConfirmDiscard(() => { service.New(w, h); _status = null; });
+            }
+            ImGui.CloseCurrentPopup();
+        }
+        ImGui.SameLine();
+        if (ImGui.Button("Cancel")) ImGui.CloseCurrentPopup();
+        ImGui.EndPopup();
     }
 
     private void DrawSaveAs()

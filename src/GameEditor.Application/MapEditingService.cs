@@ -6,6 +6,9 @@ public readonly record struct Result(bool Success, string Message);
 
 public sealed class MapEditingService(TileMap map, IMapRepository repository)
 {
+    /// <summary>Largest width/height for <see cref="New"/> and <see cref="Resize"/>.</summary>
+    public const int MaxSize = 256;
+
     private readonly UndoStack _undo = new();
     private Dictionary<TileCoord, (int Old, int New)>? _stroke;
     private (int Index, MapObject Before, int Token)? _edit;
@@ -138,15 +141,32 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
         }
     }
 
-    /// <summary>Blank map of the current size; drops any unsaved edits.</summary>
-    public void New()
+    /// <summary>Blank map; drops any unsaved edits. Each side 1–<see cref="MaxSize"/>.</summary>
+    public void New(int width, int height)
     {
+        CheckSize(width, height);
         _stroke = null;
         _edit = null;
-        Map = new TileMap(Map.Width, Map.Height);
+        Map = new TileMap(width, height);
         CurrentName = null;
         _undo.Clear();
         _dirty = false;
+    }
+
+    /// <summary>Keeps the top-left corner; new cells are 0, objects past the new right/bottom edge are dropped.
+    /// Clears undo: old commands hold the previous <see cref="TileMap"/>.</summary>
+    public void Resize(int width, int height)
+    {
+        CheckSize(width, height);
+        if (width == Map.Width && height == Map.Height) return; // OK on an unchanged popup must not wipe undo
+        Flush();
+        var tiles = new int[width * height];
+        for (int y = 0; y < Math.Min(height, Map.Height); y++)
+            for (int x = 0; x < Math.Min(width, Map.Width); x++)
+                tiles[y * width + x] = Map.Get(new TileCoord(x, y));
+        Map = new TileMap(width, height, tiles, Map.Objects.Where(o => o.X < width && o.Y < height));
+        _undo.Clear();
+        _dirty = true;
     }
 
     public Result Load(string name)
@@ -164,6 +184,14 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
         {
             return new(false, $"Load failed: {e.Message}");
         }
+    }
+
+    private static void CheckSize(int width, int height)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(width, MaxSize);
+        ArgumentOutOfRangeException.ThrowIfGreaterThan(height, MaxSize);
     }
 
     private void Do(ICommand c)

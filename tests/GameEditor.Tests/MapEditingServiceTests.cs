@@ -107,7 +107,7 @@ public class MapEditingServiceTests
 
         svc.BeginStroke();
         svc.Paint(new TileCoord(2, 1), 5); // unfinished stroke is discarded, not pushed
-        svc.New();
+        svc.New(3, 2);
 
         Assert.Equal((3, 2), (svc.Map.Width, svc.Map.Height));
         Assert.All(svc.Map.Tiles.ToArray(), t => Assert.Equal(0, t));
@@ -216,12 +216,86 @@ public class MapEditingServiceTests
     }
 
     [Fact]
+    public void New_GivenSize_BlankCleanMap()
+    {
+        var svc = new MapEditingService(new TileMap(20, 20), new FakeMapRepository());
+        svc.AddObject("a", 1, 1);
+        svc.New(30, 10);
+
+        Assert.Equal((30, 10), (svc.Map.Width, svc.Map.Height));
+        Assert.All(svc.Map.Tiles.ToArray(), t => Assert.Equal(0, t));
+        Assert.Empty(svc.Map.Objects);
+        Assert.False(svc.CanUndo);
+        Assert.Null(svc.CurrentName);
+        Assert.False(svc.IsDirty);
+    }
+
+    [Theory]
+    [InlineData(0, 10)]
+    [InlineData(10, 0)]
+    [InlineData(257, 10)]
+    [InlineData(10, 257)]
+    [InlineData(-1, 10)]
+    public void New_SizeOutOfRange_Throws(int w, int h)
+    {
+        var svc = new MapEditingService(new TileMap(20, 20), new FakeMapRepository());
+        Assert.Throws<ArgumentOutOfRangeException>(() => svc.New(w, h));
+        Assert.Equal((20, 20), (svc.Map.Width, svc.Map.Height)); // map untouched
+    }
+
+    [Fact]
+    public void Resize_KeepsTopLeftDropsOutsideObjects_ClearsUndo()
+    {
+        var svc = new MapEditingService(new TileMap(20, 20), new FakeMapRepository());
+        svc.BeginStroke();
+        svc.Paint(new TileCoord(5, 5), 3);
+        svc.Paint(new TileCoord(15, 5), 4);
+        svc.EndStroke();
+        var outside = svc.AddObject("out", 15, 3);
+        var inside = svc.AddObject("in", 3, 3);
+        Assert.True(svc.Save("a").Success);
+
+        svc.Resize(10, 30);
+
+        Assert.Equal((10, 30), (svc.Map.Width, svc.Map.Height));
+        Assert.Equal(3, svc.Map.Get(new TileCoord(5, 5)));
+        Assert.Equal(0, svc.Map.Get(new TileCoord(5, 25)));
+        Assert.Equal(-1, svc.Map.IndexOf(outside.Id));
+        Assert.Equal(inside, Assert.Single(svc.Map.Objects));
+        Assert.False(svc.CanUndo);
+        Assert.False(svc.CanRedo);
+        Assert.True(svc.IsDirty);
+        Assert.Equal("a", svc.CurrentName);
+    }
+
+    [Fact]
+    public void Resize_SizeOutOfRange_ThrowsMapUntouched()
+    {
+        var svc = new MapEditingService(new TileMap(20, 20), new FakeMapRepository());
+        svc.AddObject("a", 1, 1);
+        Assert.Throws<ArgumentOutOfRangeException>(() => svc.Resize(257, 10));
+        Assert.Equal((20, 20), (svc.Map.Width, svc.Map.Height));
+        Assert.True(svc.CanUndo);
+    }
+
+    [Fact]
+    public void Resize_SameSize_NoOp()
+    {
+        var svc = new MapEditingService(new TileMap(20, 20), new FakeMapRepository());
+        svc.AddObject("a", 1, 1);
+        var map = svc.Map;
+        svc.Resize(20, 20);
+        Assert.Same(map, svc.Map);
+        Assert.True(svc.CanUndo);
+    }
+
+    [Fact]
     public void New_DiscardsObjectsAndOpenEdit()
     {
         var svc = new MapEditingService(new TileMap(2, 2), new FakeMapRepository());
         var a = svc.AddObject("a", 0, 0);
         int token = svc.BeginObjectEdit(a.Id);
-        svc.New();
+        svc.New(2, 2);
 
         Assert.Empty(svc.Map.Objects);
         Assert.False(svc.IsDirty);
