@@ -14,12 +14,16 @@ public sealed class ScenePanel(MapEditingService service, PaintTool paintTool, O
     private RenderTexture2D _rt;
     private Vector2 _pan; // world units, relative to map center
     private Camera2D _camera = new() { Zoom = 1f };
+    private float? _zoomBeforePlay; // Stop restores it, play-mode zoom doesn't stick
 
     /// <summary>Non-null = play mode: shows the session's map, editing tools off.</summary>
     public PlaySession? Play { get; set; }
 
     public void Draw()
     {
+        if (Play is not null) _zoomBeforePlay ??= _camera.Zoom;
+        else if (_zoomBeforePlay is { } z0) (_camera.Zoom, _zoomBeforePlay) = (z0, null);
+
         ImGui.SetNextWindowSize(new(800, 600), ImGuiCond.FirstUseEver);
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
         // NoNavInputs: a focused Scene must not set WantCaptureKeyboard (Ctrl+Z/Y)
@@ -43,17 +47,20 @@ public sealed class ScenePanel(MapEditingService service, PaintTool paintTool, O
         bool hovered = ImGui.IsItemHovered();
         var mouse = Raylib.GetMousePosition() - origin;
 
-        if (hovered && Raylib.IsMouseButtonDown(MouseButton.Middle))
+        if (Play is null && hovered && Raylib.IsMouseButtonDown(MouseButton.Middle))
             _pan += Raylib.GetMouseDelta() / _camera.Zoom;
 
         var map = Play?.Map ?? service.Map;
         // panel center looks at the map's iso bounding box center (tile (0,0) top vertex = world origin), minus pan
         _camera.Offset = size / 2f;
-        _camera.Target = new Vector2(
-            (map.Width - map.Height) * IsoMath.TileWidth / 4f,
-            (map.Width + map.Height) * IsoMath.TileHeight / 4f) - _pan;
+        // play: follow the hero like the Player does; _pan stays untouched so Stop returns to it
+        _camera.Target = Play is not null
+            ? IsoMath.TileToScreen(Play.Hero.X, Play.Hero.Y)
+            : new Vector2(
+                (map.Width - map.Height) * IsoMath.TileWidth / 4f,
+                (map.Width + map.Height) * IsoMath.TileHeight / 4f) - _pan;
 
-        // zoom toward mouse: keep the world point under the cursor fixed
+        // zoom toward mouse: keep the world point under the cursor fixed (play: zoom around the hero at center)
         float wheel = Raylib.GetMouseWheelMove();
         if (hovered && wheel != 0 && float.IsFinite(wheel))
         {
@@ -68,9 +75,12 @@ public sealed class ScenePanel(MapEditingService service, PaintTool paintTool, O
                 if (z > 0.999f) z = 1; // float drift: 9 steps down then up gives 0.9999998, must still land on exactly 1
             }
             _camera.Zoom = Math.Clamp(z, 0.25f, 4f);
-            var shift = before - Raylib.GetScreenToWorld2D(mouse, _camera);
-            _pan -= shift;
-            _camera.Target += shift;
+            if (Play is null)
+            {
+                var shift = before - Raylib.GetScreenToWorld2D(mouse, _camera);
+                _pan -= shift;
+                _camera.Target += shift;
+            }
         }
 
         Raylib.BeginTextureMode(_rt);

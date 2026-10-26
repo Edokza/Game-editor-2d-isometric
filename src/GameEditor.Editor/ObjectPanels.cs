@@ -68,7 +68,7 @@ public sealed class ObjectPanels(MapEditingService service)
                 var pick = o.Sprite;
                 if (ImGui.Selectable("(box)", o.Sprite is null)) pick = null;
                 foreach (var s in Sprites.Objects.Keys)
-                    if (ImGui.Selectable(s, s == o.Sprite)) pick = s;
+                    if ((s != PlaySession.SpawnSprite || s == o.Sprite) && ImGui.Selectable(s, s == o.Sprite)) pick = s; // spawn only via Assets: one per map
                 ImGui.EndCombo();
                 if (pick != o.Sprite)
                 {

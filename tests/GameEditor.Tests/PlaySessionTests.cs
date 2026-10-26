@@ -28,6 +28,27 @@ public class PlaySessionTests
         Assert.Equal(2, play.Map.Objects.Count);
     }
 
+    [Fact]
+    public void Hero_SpawnsAtFirstSpawnMarker_MarkersHidden()
+    {
+        MapObject[] objs = [new(1, "Tree", 1, 1, "tree"), new(2, "Spawn", 2.5f, 3.5f, "spawn"), new(3, "Spawn", 0.5f, 0.5f, "spawn")];
+        var source = new TileMap(4, 6, new int[24], objs);
+        var play = new PlaySession(source);
+
+        Assert.Equal((2.5f, 3.5f), (play.Hero.X, play.Hero.Y));
+        Assert.DoesNotContain(play.Map.Objects, o => o.Sprite == "spawn");
+        Assert.Equal(["Tree", "Hero"], play.Map.Objects.Select(o => o.Name));
+        Assert.Equal(objs, source.Objects);
+    }
+
+    [Fact]
+    public void Hero_SkipsSpawnOutsideMap()
+    {
+        var play = new PlaySession(new TileMap(4, 6, new int[24], [new(1, "Spawn", -0.5f, 1, "spawn"), new(2, "Spawn", 1, 6, "spawn")]));
+        Assert.Equal((2f, 3f), (play.Hero.X, play.Hero.Y));
+        Assert.Single(play.Map.Objects);
+    }
+
     // 4×4 map, hero at (2,2); water (id 1) at the listed tiles
     private static PlaySession Session(params (int X, int Y)[] water)
     {
@@ -70,6 +91,20 @@ public class PlaySessionTests
         Walk(play, dx, dy, 120);
         Assert.True(play.Hero.X is >= 0 and < 4);
         Assert.True(play.Hero.Y is >= 0 and < 4);
+    }
+
+    [Fact]
+    public void Move_UsesMapSolid_CopiedFromSource()
+    {
+        var source = new TileMap(4, 4, new int[16], solid: [0]); // every tile is id 0
+        var play = new PlaySession(source);
+        Walk(play, 1, 0);
+        Assert.True(play.Hero.X < 3); // can't leave tile (2,2)
+
+        play.Map.SetSolid(0, false);
+        Assert.Contains(0, source.Solid); // copy, not shared
+        Walk(play, 1, 0);
+        Assert.True(play.Hero.X >= 3);
     }
 
     [Fact]

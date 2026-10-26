@@ -14,4 +14,23 @@
   <ItemGroup>
     <None Include="..\..\assets\**" LinkBase="assets" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <!-- Export copies this exe (phase 21). Republished only when the Player, its references or assets change.
+       Own obj/bin (bundle\): a solution build compiles the same projects at the same time. -->
+  <PropertyGroup>
+    <BundleDotnet>$(DOTNET_HOST_PATH)</BundleDotnet>
+    <BundleDotnet Condition="'$(BundleDotnet)' == ''">dotnet</BundleDotnet>
+  </PropertyGroup>
+  <ItemGroup>
+    <PlayerInputs Include="..\GameEditor.Player\**\*.cs;..\GameEditor.Application\**\*.cs;..\GameEditor.Domain\**\*.cs;..\GameEditor.Infrastructure\**\*.cs;..\GameEditor.Rendering\**\*.cs"
+                  Exclude="..\*\obj\**;..\*\bin\**" />
+    <PlayerInputs Include="..\GameEditor.Player\*.csproj;..\GameEditor.Application\*.csproj;..\GameEditor.Domain\*.csproj;..\GameEditor.Infrastructure\*.csproj;..\GameEditor.Rendering\*.csproj" />
+    <PlayerInputs Include="..\..\assets\**;..\..\Directory.Build.props;..\..\Directory.Packages.props" />
+  </ItemGroup>
+  <Target Name="BundlePlayer" AfterTargets="Build" Condition="'$(DesignTimeBuild)' != 'true'"
+          Inputs="@(PlayerInputs)" Outputs="$(OutDir)player\GameEditor.Player.exe">
+    <!-- a failed publish must leave no exe: Export then says "Player not found" instead of shipping a stale one; retried next build -->
+    <Delete Files="$(OutDir)player\GameEditor.Player.exe" />
+    <Exec Command="&quot;$(BundleDotnet)&quot; publish &quot;$(MSBuildProjectDirectory)\..\GameEditor.Player\GameEditor.Player.csproj&quot; -c Release -r win-x64 -o &quot;$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(OutDir)', 'player'))&quot; -p:BaseIntermediateOutputPath=obj\bundle\ -p:BaseOutputPath=bin\bundle\ -p:BundleMaps=false -nologo"
+          ContinueOnError="WarnAndContinue" /> <!-- offline/publish failure must not block the editor build -->
+  </Target>
 </Project>

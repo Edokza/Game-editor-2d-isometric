@@ -13,7 +13,7 @@ public sealed class JsonMapRepository(string folder) : IMapRepository
         Directory.CreateDirectory(folder);
         // write-then-rename so a crash mid-write never corrupts the existing map
         var tmp = path + ".tmp";
-        File.WriteAllBytes(tmp, JsonSerializer.SerializeToUtf8Bytes(new MapDto(map.Width, map.Height, [.. map.Tiles], [.. map.Objects]), MapJsonContext.Default.MapDto));
+        File.WriteAllBytes(tmp, JsonSerializer.SerializeToUtf8Bytes(new MapDto(map.Width, map.Height, [.. map.Tiles], [.. map.Objects], [.. map.Solid.Order()]), MapJsonContext.Default.MapDto));
         File.Move(tmp, path, overwrite: true);
     }
 
@@ -21,7 +21,7 @@ public sealed class JsonMapRepository(string folder) : IMapRepository
     {
         var dto = JsonSerializer.Deserialize(File.ReadAllBytes(PathOf(name)), MapJsonContext.Default.MapDto)
                   ?? throw new InvalidDataException("Map file is empty.");
-        return new TileMap(dto.Width, dto.Height, dto.Tiles, dto.Objects);
+        return new TileMap(dto.Width, dto.Height, dto.Tiles, dto.Objects, dto.Solid);
     }
 
     public IReadOnlyList<string> List() =>
@@ -29,12 +29,12 @@ public sealed class JsonMapRepository(string folder) : IMapRepository
             ? [.. Directory.GetFiles(folder, "*.json").Select(f => Path.GetFileNameWithoutExtension(f)).Order()]
             : [];
 
-    private string PathOf(string name)
-    {
+    private string PathOf(string name) =>
+        IsValidName(name) ? Path.Combine(folder, name + ".json") : throw new ArgumentException($"Invalid map name '{name}'.");
+
+    /// <summary>Safe as one file/folder name; <see cref="GameExporter"/> uses the same rule.</summary>
+    internal static bool IsValidName(string name) =>
         // GetInvalidFileNameChars() lacks '\' on Linux; ".." blocks traversal-looking names
-        if (string.IsNullOrWhiteSpace(name) || name.Contains("..") || name.Contains('\\')
-            || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
-            throw new ArgumentException($"Invalid map name '{name}'.");
-        return Path.Combine(folder, name + ".json");
-    }
+        !string.IsNullOrWhiteSpace(name) && !name.Contains("..") && !name.Contains('\\')
+        && name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0;
 }

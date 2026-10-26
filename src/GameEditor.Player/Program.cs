@@ -10,11 +10,13 @@ string error = "";
 string? name = args.Length > 0 ? args[0] : null;
 try // folder listing can throw too (unreadable Documents): must end in the in-window error, not a crash
 {
-    // maps shipped next to the exe win; otherwise play what the editor saved
-    var bundled = Path.Combine(AppContext.BaseDirectory, "maps");
-    var repo = new JsonMapRepository(Directory.Exists(bundled) && Directory.EnumerateFiles(bundled, "*.json").Any()
-        ? bundled
-        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "GameEditor", "maps"));
+    // maps next to the exe (Export) win, then maps bundled in the single-file exe (extracted to BaseDirectory,
+    // a temp folder, not the exe's), otherwise play what the editor saved
+    var repo = new JsonMapRepository(new[] { Path.GetDirectoryName(Environment.ProcessPath), AppContext.BaseDirectory }
+        .OfType<string>()
+        .Select(d => Path.Combine(d, "maps"))
+        .FirstOrDefault(d => Directory.Exists(d) && Directory.EnumerateFiles(d, "*.json").Any())
+        ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "GameEditor", "maps"));
     name ??= repo.List().FirstOrDefault();
     if (name is null) error = "No maps found.";
     else play = new PlaySession(repo.Load(name));

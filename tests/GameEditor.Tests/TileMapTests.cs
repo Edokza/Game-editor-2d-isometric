@@ -5,6 +5,18 @@ namespace GameEditor.Tests;
 public class TileMapTests
 {
     [Fact]
+    public void Solid_DefaultsWhenNotGiven_AndCopiesGiven()
+    {
+        Assert.Equal([1, 6, 7], new TileMap(2, 2).Solid.Order());
+        int[] given = [3];
+        var map = new TileMap(1, 1, [0], solid: given);
+        map.SetSolid(4, true);
+        map.SetSolid(3, false);
+        Assert.Equal([4], map.Solid);
+        Assert.Equal([3], given);
+    }
+
+    [Fact]
     public void Ctor_WrongSize_Throws() =>
         Assert.Throws<ArgumentException>(() => new TileMap(3, 2, new int[5]));
 

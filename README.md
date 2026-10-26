@@ -1,18 +1,23 @@
 # Isometric Game Editor
 
-A small isometric tile map editor built with .NET 10, Raylib and Dear ImGui. Paint maps, place objects, test them in Play mode, and export a standalone game as a single `.exe`.
+A small isometric tile map editor built with .NET 10, Raylib and Dear ImGui. Paint maps, place objects, test them in Play mode, and export a standalone game with one click.
 
 ## Features
 
 - Isometric 64×32 tiles: click/drag to paint, one stroke = one undo step
+- Bucket fill: flood-fill connected tiles of the same id (4-way), one undo step
+- Eyedropper: right-click a tile in the Scene to pick it as the paint tile
+- Map size: New asks for width × height, Edit → Resize Map changes it (1–256 each). Resize clears undo and drops objects outside the new size
+- Solid tiles per map: right-click a tile in Assets to toggle Solid (red corner mark), saved in the map file
+- Hero spawn marker: add the `spawn` object to set where Play starts (one per map; adding another moves it). No spawn = map center
 - Pan and zoom (zoom snaps to whole numbers at 1× and above for crisp pixels)
 - Dockable Scene, Assets, Hierarchy and Inspector panels
 - Map objects: add, delete, rename, drag in the scene, depth-sorted drawing
 - Assets panel built from PNG sprites (tiles, objects, characters)
 - Undo/redo for every edit
 - Multiple maps: New / Open / Save / Save As, with an unsaved-changes prompt
-- Play mode: walk a hero around the map, blocked by solid tiles
-- Standalone Player, published as one self-contained `.exe`
+- Play mode: walk a hero around the map, blocked by solid tiles; the camera follows the hero
+- File → Export Game: a playable folder (exe + map) that runs without .NET or the editor
 
 ## Requirements
 
@@ -33,13 +38,16 @@ dotnet run --project src/GameEditor.Editor
 | Input | Action |
 |---|---|
 | Left click / drag | Paint the selected tile, or drag an object |
-| Middle drag | Pan |
-| Mouse wheel | Zoom toward the cursor |
+| B / G | Brush / Fill tool |
+| Right click (Scene) | Pick the tile under the cursor |
+| Right click (Assets tile) | Toggle Solid |
+| Middle drag | Pan (not in Play mode) |
+| Mouse wheel | Zoom toward the cursor (screen center in Play mode) |
 | Ctrl+Z / Ctrl+Y | Undo / Redo |
 | Play / Stop (menu bar) | Enter / leave Play mode |
 | WASD / arrow keys | Walk the hero (Play mode) |
 
-Editing is disabled during Play mode. Stop restores the map exactly as it was.
+Editing is disabled during Play mode. Stop restores the map and zoom exactly as they were.
 
 ## Assets
 
@@ -48,14 +56,14 @@ Sprites live in `assets/` and are copied next to the executable on build.
 ```
 assets/
   tiles/<id>_<name>.png     e.g. 0_grass.png, 6_dirt_block.png
-  objects/<name>.png        e.g. tree.png
+  objects/<name>.png        e.g. tree.png, spawn.png (hero spawn marker)
   characters/<name>.png     hero_se.png, hero_ne.png
 ```
 
 - Tile base is 64×32. Taller images (blocks) are allowed.
 - Anchor is bottom center: a tile's bottom vertex, or an object's position.
 - A tile id without an image is drawn as a flat color.
-- Solid tiles (block the hero): `1` water, `6` dirt block, `7` stone block.
+- Default solid tiles for new maps: `1` water, `6` dirt block, `7` stone block.
 - Regenerate placeholders: `python tools/gen_assets.py`
 
 ## Map files
@@ -67,23 +75,41 @@ The editor saves to `Documents/GameEditor/maps/<name>.json`:
   "Width": 20,
   "Height": 20,
   "Tiles": [0, 0, 1, ...],
-  "Objects": [{ "Id": 1, "Name": "Tree", "X": 3.5, "Y": 4.5, "Sprite": "tree" }]
+  "Objects": [
+    { "Id": 1, "Name": "tree", "X": 3.5, "Y": 4.5, "Sprite": "tree" },
+    { "Id": 2, "Name": "spawn", "X": 10.5, "Y": 10.5, "Sprite": "spawn" }
+  ],
+  "Solid": [1, 6, 7]
 }
 ```
 
-`Tiles` is row-major (`y * Width + x`). `Objects` and `Sprite` are optional. Names may not contain `..`, `/`, `\` or other invalid file name characters.
+`Tiles` is row-major (`y * Width + x`). `Objects`, `Sprite` and `Solid` are optional. A missing `Solid` means the defaults `[1, 6, 7]`; `[]` means nothing is solid. The first object with sprite `spawn` is the hero's start. Names may not contain `..`, `/`, `\` or other invalid file name characters.
 
-## Player / Export
+## Export
 
-Run a saved map:
+Save the map, then **File → Export Game...** (an unsaved map asks for a name first; a modified map is saved). The game is written to `Documents/GameEditor/export/<name>/`:
+
+```
+<name>/
+  <name>.exe          self-contained Player (runtime, raylib and assets inside)
+  maps/<name>.json
+```
+
+Copy the whole folder. It runs on any Windows x64 machine without .NET or the editor. Exporting again overwrites it; close the game first.
+
+The editor build publishes the Player into `<editor output>/player/` for this, so the first build (and builds after Player changes) take longer. If that publish fails (e.g. offline), the build still succeeds but Export reports "Player not found"; rebuild when online.
+
+## Player
+
+Run a saved map without exporting:
 
 ```bash
 dotnet run --project src/GameEditor.Player -- <map name>
 ```
 
-With no name, the first map is loaded. The Player reads maps from `<exe>/maps` if it contains any `.json`, otherwise from `Documents/GameEditor/maps`.
+With no name, the first map is loaded. The Player reads maps from `maps/` next to its exe if it contains any `.json`, otherwise from `Documents/GameEditor/maps`.
 
-To export a game:
+Manual publish (one exe with the maps inside):
 
 1. Copy the map `.json` into `src/GameEditor.Player/maps/`.
 2. Publish:
@@ -92,7 +118,7 @@ To export a game:
 dotnet publish src/GameEditor.Player -c Release -r win-x64
 ```
 
-The result is one self-contained `GameEditor.Player.exe` (runtime, raylib, assets and maps included). It runs on any Windows x64 machine without .NET or the editor.
+The result is `src/GameEditor.Player/bin/Release/net10.0/win-x64/publish/GameEditor.Player.exe`. `src/GameEditor.Player/maps/` already contains `Map_default_1.json`, which gets bundled too: delete it before publishing, or pass your map name when running.
 
 ## Architecture
 
@@ -106,7 +132,7 @@ Player ─┤                                      ^
 |---|---|
 | Domain | `TileMap`, `MapObject`, `IsoMath`, solid tiles. No dependencies. |
 | Application | `MapEditingService`, commands + `UndoStack`, `PlaySession`, `IMapRepository` |
-| Infrastructure | `JsonMapRepository` (System.Text.Json source generation) |
+| Infrastructure | `JsonMapRepository` (System.Text.Json source generation), `GameExporter` |
 | Rendering | Raylib drawing, sprite loading, shared input |
 | Editor | ImGui editor app and composition root |
 | Player | Standalone game |
@@ -114,7 +140,8 @@ Player ─┤                                      ^
 
 ## Known limitations
 
-- New maps are a fixed 20×20 (loaded maps may be any size).
-- Solid tile ids are hardcoded.
+- New / Resize Map are limited to 256×256 (loaded files may be larger).
 - One tile layer only.
 - Windows x64 only for the published Player.
+- Export is a folder (exe + `maps/`), not a single file, and holds one map.
+- Resize Map clears the undo history.

@@ -4,13 +4,18 @@ public sealed class TileMap
 {
     private readonly int[] _tiles;
     private readonly List<MapObject> _objects = [];
+    private readonly HashSet<int> _solid;
+
+    /// <summary>assets/tiles ids: 1 water, 6 dirt_block, 7 stone_block. Used when a map doesn't list its own.</summary>
+    public static readonly IReadOnlyList<int> DefaultSolid = [1, 6, 7];
 
     public int Width { get; }
     public int Height { get; }
 
     public TileMap(int width, int height) : this(width, height, new int[checked(width * height)]) { }
 
-    public TileMap(int width, int height, int[] tiles, IEnumerable<MapObject>? objects = null)
+    /// <param name="solid">Tile ids the hero can't enter; null → <see cref="DefaultSolid"/>. Copied.</param>
+    public TileMap(int width, int height, int[] tiles, IEnumerable<MapObject>? objects = null, IEnumerable<int>? solid = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
@@ -20,6 +25,7 @@ public sealed class TileMap
         Width = width;
         Height = height;
         _tiles = [.. tiles];
+        _solid = [.. solid ?? DefaultSolid];
         var ids = new HashSet<int>(); // not Insert: its IndexOf per object is O(n²) on big files
         foreach (var o in objects ?? [])
         {
@@ -40,6 +46,14 @@ public sealed class TileMap
     internal void Set(TileCoord c, int tileId)
     {
         if (InBounds(c)) _tiles[c.Y * Width + c.X] = tileId;
+    }
+
+    public IReadOnlySet<int> Solid => _solid;
+
+    internal void SetSolid(int tileId, bool solid)
+    {
+        if (solid) _solid.Add(tileId);
+        else _solid.Remove(tileId);
     }
 
     /// <summary>Draw/list order.</summary>

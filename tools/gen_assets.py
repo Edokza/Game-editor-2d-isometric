@@ -94,7 +94,17 @@ def chr_(face, pack):
     if face is not None: p(face, 12, "#222222"); p(face + 3, 12, "#222222")
     return im
 
-objects = {"tree": tree(), "rock": rock(),
+def spawn():  # editor-only marker: red flag on a pole, ring at the anchor; PlaySession hides it
+    im, p = spr(32, 48)
+    for y in range(41, 48):
+        for x in range(32):
+            if 0.6 < (x - 15.5) ** 2 / 196 + (y - 44.5) ** 2 / 12 < 1: p(x, y, "#ffe040")
+    for y in range(4, 45): p(15, y, "#e8e8e8"); p(16, y, "#a0a0a0")
+    for y in range(4, 18):
+        for x in range(17, 17 + (18 - y if y > 10 else y + 4)): p(x, y, "#e03030" if y < 11 else "#b02020")
+    return im
+
+objects = {"tree": tree(), "rock": rock(), "spawn": spawn(),
            "crate": block(32, 24, ["#b08850", "#9a7442", "#c49c60"], "#a07a44", 11, True)}
 se, ne = chr_(16, None), chr_(None, 22)
 chars = {"hero_se": se, "hero_ne": ne}
