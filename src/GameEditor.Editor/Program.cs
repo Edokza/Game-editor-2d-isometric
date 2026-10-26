@@ -40,10 +40,15 @@ while (!quit)
         {
             if (Raylib.IsKeyPressed(KeyboardKey.Z)) service.Undo();
             if (Raylib.IsKeyPressed(KeyboardKey.Y)) service.Redo();
+            // spawn skipped: AddObject would move the one spawn, not copy it
+            if (Raylib.IsKeyPressed(KeyboardKey.D) && objectPanels.SelectedId is { } sel
+                && service.Map.Objects.FirstOrDefault(o => o.Id == sel) is { Sprite: not PlaySession.SpawnSprite } dup)
+                objectPanels.SelectedId = service.AddObject(dup.Name, dup.X + 0.5f, dup.Y + 0.5f, dup.Sprite).Id;
         }
         else if (Raylib.IsKeyPressed(KeyboardKey.B)) paintTool.Mode = PaintMode.Brush;
         else if (Raylib.IsKeyPressed(KeyboardKey.G)) paintTool.Mode = PaintMode.Fill;
         else if (Raylib.IsKeyPressed(KeyboardKey.R)) paintTool.Mode = PaintMode.Rect;
+        else if (Raylib.IsKeyPressed(KeyboardKey.Delete) && objectPanels.SelectedId is { } id) service.RemoveObject(id);
     }
     ImGui.DockSpaceOverViewport(0, ImGui.GetMainViewport(), ImGuiDockNodeFlags.PassthruCentralNode);
 
