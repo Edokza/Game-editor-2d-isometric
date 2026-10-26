@@ -108,6 +108,12 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
         if (Map.SolidSprites.Contains(sprite) != solid) Do(new SolidSpriteCommand(Map, sprite, solid));
     }
 
+    public void SetShadow(string sprite, bool shadow)
+    {
+        Flush();
+        if (Map.ShadowlessSprites.Contains(sprite) == shadow) Do(new ShadowCommand(Map, sprite, shadow));
+    }
+
     public bool RemoveObject(int id)
     {
         Flush();
@@ -213,7 +219,7 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
         for (int y = 0; y < Math.Min(height, Map.Height); y++)
             for (int x = 0; x < Math.Min(width, Map.Width); x++)
                 tiles[y * width + x] = Map.Get(new TileCoord(x, y));
-        Do(new ResizeCommand(m => Map = m, Map, new TileMap(width, height, tiles, Map.Objects.Where(o => o.X < width && o.Y < height), Map.Solid, Map.SolidSprites)));
+        Do(new ResizeCommand(m => Map = m, Map, new TileMap(width, height, tiles, Map.Objects.Where(o => o.X < width && o.Y < height), Map.Solid, Map.SolidSprites, Map.ShadowlessSprites)));
     }
 
     public Result Load(string name)

@@ -6,12 +6,16 @@ public sealed class TileMap
     private readonly List<MapObject> _objects = [];
     private readonly HashSet<int> _solid;
     private readonly HashSet<string> _solidSprites;
+    private readonly HashSet<string> _shadowlessSprites;
 
     /// <summary>assets/tiles ids: 1 water, 6 dirt_block, 7 stone_block. Used when a map doesn't list its own.</summary>
     public static readonly IReadOnlyList<int> DefaultSolid = [1, 6, 7];
 
     /// <summary>assets/objects sprites whose tile the hero can't enter. Used when a map doesn't list its own.</summary>
     public static readonly IReadOnlyList<string> DefaultSolidSprites = ["crate", "rock", "tree"];
+
+    /// <summary>assets/objects sprites drawn without a ground shadow (a box sits flush on its tile). Used when a map doesn't list its own.</summary>
+    public static readonly IReadOnlyList<string> DefaultShadowlessSprites = ["crate"];
 
     public int Width { get; }
     public int Height { get; }
@@ -20,8 +24,9 @@ public sealed class TileMap
 
     /// <param name="solid">Tile ids the hero can't enter; null → <see cref="DefaultSolid"/>. Copied.</param>
     /// <param name="solidSprites">Object sprites the hero can't walk into; null → <see cref="DefaultSolidSprites"/>. Copied.</param>
+    /// <param name="shadowlessSprites">Object sprites drawn without a shadow; null → <see cref="DefaultShadowlessSprites"/>. Copied.</param>
     public TileMap(int width, int height, int[] tiles, IEnumerable<MapObject>? objects = null, IEnumerable<int>? solid = null,
-        IEnumerable<string>? solidSprites = null)
+        IEnumerable<string>? solidSprites = null, IEnumerable<string>? shadowlessSprites = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
@@ -33,6 +38,7 @@ public sealed class TileMap
         _tiles = [.. tiles];
         _solid = [.. solid ?? DefaultSolid];
         _solidSprites = [.. solidSprites ?? DefaultSolidSprites];
+        _shadowlessSprites = [.. shadowlessSprites ?? DefaultShadowlessSprites];
         var ids = new HashSet<int>(); // not Insert: its IndexOf per object is O(n²) on big files
         foreach (var o in objects ?? [])
         {
@@ -69,6 +75,14 @@ public sealed class TileMap
     {
         if (solid) _solidSprites.Add(sprite);
         else _solidSprites.Remove(sprite);
+    }
+
+    public IReadOnlySet<string> ShadowlessSprites => _shadowlessSprites;
+
+    internal void SetShadow(string sprite, bool shadow)
+    {
+        if (shadow) _shadowlessSprites.Remove(sprite);
+        else _shadowlessSprites.Add(sprite);
     }
 
     /// <summary>Draw/list order.</summary>

@@ -7,7 +7,7 @@ using rlImGui_cs;
 
 namespace GameEditor.Editor;
 
-/// <summary>Tiles tab picks the paint tile, right-click toggles Solid; Objects tab adds an object with that sprite at the map center.</summary>
+/// <summary>Tiles tab picks the paint tile, right-click toggles Solid; Objects tab (right-click: Solid / Shadow) adds an object with that sprite at the map center.</summary>
 public static class AssetsPanel
 {
     private static readonly Vector4 Selected = new(0.9f, 0.75f, 0.2f, 1f);
@@ -86,6 +86,8 @@ public static class AssetsPanel
                     if (ImGui.BeginPopupContextItem("solid"))
                     {
                         if (ImGui.MenuItem("Solid", "", solid)) service.SetSolidSprite(name, !solid);
+                        bool shadow = !map.ShadowlessSprites.Contains(name);
+                        if (ImGui.MenuItem("Shadow", "", shadow)) service.SetShadow(name, !shadow);
                         ImGui.EndPopup();
                     }
                     ImGui.PopID();

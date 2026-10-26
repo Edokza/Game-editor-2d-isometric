@@ -22,7 +22,7 @@ public sealed class PlaySession
         // spawn markers are editor-only: the first one inside the map places the hero (outside = stuck), none are drawn in play
         var spawn = source.Objects.FirstOrDefault(o => o.Sprite == SpawnSprite && source.InBounds(Tile(o.X, o.Y)));
         Map = new TileMap(source.Width, source.Height, source.Tiles.ToArray(),
-            source.Objects.Where(o => o.Sprite != SpawnSprite), source.Solid, source.SolidSprites);
+            source.Objects.Where(o => o.Sprite != SpawnSprite), source.Solid, source.SolidSprites, source.ShadowlessSprites);
         _objectBlocked = [.. Map.Objects.Where(o => o.Sprite is { } s && Map.SolidSprites.Contains(s)).Select(o => Tile(o.X, o.Y))];
         _hero = Map.Objects.Count;
         var (x, y) = spawn is null ? (Map.Width / 2f, Map.Height / 2f) : (spawn.X, spawn.Y);

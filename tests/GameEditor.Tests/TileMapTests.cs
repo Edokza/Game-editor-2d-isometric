@@ -29,6 +29,18 @@ public class TileMapTests
     }
 
     [Fact]
+    public void ShadowlessSprites_DefaultsWhenNotGiven_AndCopiesGiven()
+    {
+        Assert.Equal(["crate"], new TileMap(2, 2).ShadowlessSprites);
+        string[] given = ["bush"];
+        var map = new TileMap(1, 1, [0], shadowlessSprites: given);
+        map.SetShadow("tree", false);
+        map.SetShadow("bush", true);
+        Assert.Equal(["tree"], map.ShadowlessSprites);
+        Assert.Equal(["bush"], given);
+    }
+
+    [Fact]
     public void Ctor_WrongSize_Throws() =>
         Assert.Throws<ArgumentException>(() => new TileMap(3, 2, new int[5]));
 

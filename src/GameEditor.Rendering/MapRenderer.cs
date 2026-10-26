@@ -93,7 +93,7 @@ public static class MapRenderer
         // diagonal s = x + y: a tall tile's depth is its center, s + 1; tiles on one diagonal never overlap each other
         for (int s = 0; s <= map.Width + map.Height - 2; s++)
         {
-            while (k < sorted.Count && sorted[k].X + sorted[k].Y < s + 1) DrawObject(sorted[k++], origin, selectedId);
+            while (k < sorted.Count && sorted[k].X + sorted[k].Y < s + 1) DrawObject(sorted[k++], origin, selectedId, map.ShadowlessSprites);
             for (int x = Math.Max(0, s - map.Height + 1); x <= Math.Min(s, map.Width - 1); x++)
             {
                 var c = new TileCoord(x, s - x);
@@ -101,15 +101,15 @@ public static class MapRenderer
                 if (tex.Id != 0 && IsTall(tex)) DrawTile(tex, origin + IsoMath.TileToScreen(c));
             }
         }
-        while (k < sorted.Count) DrawObject(sorted[k++], origin, selectedId);
+        while (k < sorted.Count) DrawObject(sorted[k++], origin, selectedId, map.ShadowlessSprites);
     }
 
-    private static void DrawObject(MapObject o, Vector2 origin, int? selectedId)
+    private static void DrawObject(MapObject o, Vector2 origin, int? selectedId, IReadOnlySet<string> shadowless)
     {
         var rect = ObjectRect(o, origin);
         var tex = Sprites.Object(o.Sprite);
         // shadow at anchor (bottom-center, raised 2px to tuck under the base): faint outer + darker inner ellipse = soft edge
-        if (o.Sprite != "spawn")
+        if (o.Sprite != "spawn" && !(o.Sprite is { } s && shadowless.Contains(s)))
         {
             int cx = (int)(rect.X + rect.Width / 2), cy = (int)(rect.Y + rect.Height) - 2;
             Raylib.DrawEllipse(cx, cy, rect.Width * 0.4f, rect.Width * 0.2f, new Color(0, 0, 0, 40));

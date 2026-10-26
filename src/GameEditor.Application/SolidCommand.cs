@@ -13,3 +13,9 @@ public sealed class SolidSpriteCommand(TileMap map, string sprite, bool solid) :
     public void Execute() => map.SetSolidSprite(sprite, solid);
     public void Undo() => map.SetSolidSprite(sprite, !solid);
 }
+
+public sealed class ShadowCommand(TileMap map, string sprite, bool shadow) : ICommand
+{
+    public void Execute() => map.SetShadow(sprite, shadow);
+    public void Undo() => map.SetShadow(sprite, !shadow);
+}

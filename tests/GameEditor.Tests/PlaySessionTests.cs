@@ -118,6 +118,10 @@ public class PlaySessionTests
         Assert.Equal(["bush"], source.SolidSprites); // copy, not shared
     }
 
+    [Fact]
+    public void ShadowlessSprites_CopiedFromSource() =>
+        Assert.Equal(["bush"], new PlaySession(new TileMap(4, 4, new int[16], shadowlessSprites: ["bush"])).Map.ShadowlessSprites);
+
     // 8×8 map, hero spawned at (spawnX, spawnY), one object with the given sprite at (5.5, 5.5)
     private static PlaySession WithObject(string sprite, float spawnX, float spawnY) =>
         new(new TileMap(8, 8, new int[64], [new(1, "Obj", 5.5f, 5.5f, sprite), new(2, "Spawn", spawnX, spawnY, PlaySession.SpawnSprite)]));
