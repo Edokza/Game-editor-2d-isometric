@@ -253,11 +253,30 @@ public class MapEditingServiceTests
     }
 
     [Fact]
+    public void SetSolidSprite_OneUndoStep_Dirty_NoOpWhenSame()
+    {
+        var svc = new MapEditingService(new TileMap(2, 2), new FakeMapRepository());
+        svc.SetSolidSprite("tree", true); // already solid
+        Assert.False(svc.CanUndo);
+        Assert.False(svc.IsDirty);
+
+        svc.SetSolidSprite("tree", false);
+        Assert.True(svc.IsDirty);
+        Assert.Equal(["crate", "rock"], svc.Map.SolidSprites.Order());
+
+        svc.Undo();
+        Assert.Equal(["crate", "rock", "tree"], svc.Map.SolidSprites.Order());
+        svc.Redo();
+        Assert.Equal(["crate", "rock"], svc.Map.SolidSprites.Order());
+    }
+
+    [Fact]
     public void Resize_KeepsSolid_NewResetsToDefault()
     {
-        var svc = new MapEditingService(new TileMap(4, 4, new int[16], solid: [3]), new FakeMapRepository());
+        var svc = new MapEditingService(new TileMap(4, 4, new int[16], solid: [3], solidSprites: ["bush"]), new FakeMapRepository());
         svc.Resize(5, 5);
         Assert.Equal([3], svc.Map.Solid);
+        Assert.Equal(["bush"], svc.Map.SolidSprites);
         svc.New(2, 2); // Discard must drop unsaved Solid edits too
         Assert.Equal([1, 6, 7], svc.Map.Solid.Order());
         Assert.False(svc.IsDirty);
