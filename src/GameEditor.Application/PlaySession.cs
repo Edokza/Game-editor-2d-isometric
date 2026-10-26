@@ -8,6 +8,7 @@ public sealed class PlaySession
 {
     /// <summary>Tiles per second.</summary>
     public const float Speed = 4f;
+    public const string SpawnSprite = "spawn";
     private const float MaxDt = 0.1f; // a frame hitch must not step over a whole tile
 
     private readonly int _hero; // index in Map.Objects: appended last, nothing else inserts
@@ -17,9 +18,13 @@ public sealed class PlaySession
 
     public PlaySession(TileMap source)
     {
-        Map = new TileMap(source.Width, source.Height, source.Tiles.ToArray(), source.Objects, source.Solid);
+        // spawn markers are editor-only: the first one inside the map places the hero (outside = stuck), none are drawn in play
+        var spawn = source.Objects.FirstOrDefault(o => o.Sprite == SpawnSprite && source.InBounds(Tile(o.X, o.Y)));
+        Map = new TileMap(source.Width, source.Height, source.Tiles.ToArray(),
+            source.Objects.Where(o => o.Sprite != SpawnSprite), source.Solid);
         _hero = Map.Objects.Count;
-        Map.Insert(_hero, new MapObject(Map.NextObjectId, "Hero", Map.Width / 2f, Map.Height / 2f, "hero_se"));
+        var (x, y) = spawn is null ? (Map.Width / 2f, Map.Height / 2f) : (spawn.X, spawn.Y);
+        Map.Insert(_hero, new MapObject(Map.NextObjectId, "Hero", x, y, "hero_se"));
     }
 
     /// <summary><paramref name="dir"/> in tile space, any length. One axis at a time so a blocked axis still lets the hero slide along the wall.</summary>
