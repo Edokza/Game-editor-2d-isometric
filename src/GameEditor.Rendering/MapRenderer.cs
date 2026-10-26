@@ -41,6 +41,8 @@ public static class MapRenderer
             var top = origin + IsoMath.TileToScreen(c);
             int id = map.Get(c);
             var tex = Sprites.Tile(id);
+            // water ripple: brightness 0.7–1.0, phase (x + y) → waves run diagonally; subtler was invisible on pastel tiles
+            float shade = id == 1 ? -0.15f * (1 + MathF.Sin((float)Raylib.GetTime() * 3 + (x + y) * 1.5f)) : 0;
             // front edges get a wall under the diamond edge: map reads as a floating island
             var wallColor = (uint)id < (uint)Palette.Length ? Palette[id] : Palette[4];
             if (y == map.Height - 1)
@@ -57,10 +59,10 @@ public static class MapRenderer
             }
             if (tex.Id != 0)
             {
-                if (!IsTall(tex)) DrawTile(tex, top);
+                if (!IsTall(tex)) DrawTile(tex, top, Raylib.ColorBrightness(Color.White, shade));
                 continue;
             }
-            var color = ColorOf(id);
+            var color = Raylib.ColorBrightness(ColorOf(id), shade);
             Raylib.DrawTriangle(top, top + left, top + down, color);
             Raylib.DrawTriangle(top, top + down, top + right, color);
             Raylib.DrawLineV(top, top + right, Outline);
@@ -93,8 +95,8 @@ public static class MapRenderer
     private static bool IsTall(Texture2D tex) => tex.Height > IsoMath.TileHeight;
 
     // image bottom center = tile bottom vertex
-    private static void DrawTile(Texture2D tex, Vector2 top) =>
-        Raylib.DrawTextureV(tex, top + new Vector2(-tex.Width / 2f, IsoMath.TileHeight - tex.Height), Color.White);
+    private static void DrawTile(Texture2D tex, Vector2 top, Color tint) =>
+        Raylib.DrawTextureV(tex, top + new Vector2(-tex.Width / 2f, IsoMath.TileHeight - tex.Height), tint);
 
     /// <summary>Block silhouette = tile diamond swept up to the image top; not the image rect, whose transparent corners show what is behind.</summary>
     private static bool BlockCovers(Texture2D tex, Vector2 top, Vector2 p)
@@ -117,7 +119,7 @@ public static class MapRenderer
             {
                 var c = new TileCoord(x, s - x);
                 var tex = Sprites.Tile(map.Get(c));
-                if (tex.Id != 0 && IsTall(tex)) DrawTile(tex, origin + IsoMath.TileToScreen(c));
+                if (tex.Id != 0 && IsTall(tex)) DrawTile(tex, origin + IsoMath.TileToScreen(c), Color.White);
             }
         }
         while (k < sorted.Count) DrawObject(sorted[k++], origin, selectedId, map.ShadowlessSprites);
