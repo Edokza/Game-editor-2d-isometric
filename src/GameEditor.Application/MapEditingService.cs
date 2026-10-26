@@ -50,10 +50,17 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
         _stroke = null;
     }
 
-    /// <summary>Appends at (<paramref name="x"/>, <paramref name="y"/>) tile space with a fresh id.</summary>
+    /// <summary>Appends at (<paramref name="x"/>, <paramref name="y"/>) tile space with a fresh id.
+    /// A spawn when one exists moves that one instead: the hero has one spawn point.</summary>
     public MapObject AddObject(string name, float x, float y, string? sprite = null)
     {
         Flush();
+        if (sprite == PlaySession.SpawnSprite && Map.Objects.FirstOrDefault(o => o.Sprite == sprite) is { } spawn)
+        {
+            var moved = spawn with { X = x, Y = y };
+            if (moved != spawn) Do(new ObjectCommand(Map, Map.IndexOf(spawn.Id), spawn, moved));
+            return moved;
+        }
         var o = new MapObject(Map.NextObjectId, name, x, y, sprite);
         Do(new ObjectCommand(Map, Map.Objects.Count, null, o));
         return o;

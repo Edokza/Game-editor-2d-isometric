@@ -136,6 +136,22 @@ public class MapEditingServiceTests
     }
 
     [Fact]
+    public void AddSecondSpawn_MovesFirstInOneUndo()
+    {
+        var tree = new MapObject(1, "Tree", 1, 1, "tree");
+        var svc = new MapEditingService(new TileMap(4, 4, new int[16], [tree]), new FakeMapRepository());
+        var a = svc.AddObject("spawn", 0.5f, 0.5f, "spawn");
+        var b = svc.AddObject("spawn", 2.5f, 3.5f, "spawn");
+
+        Assert.Equal(a with { X = 2.5f, Y = 3.5f }, b);
+        Assert.Equal([tree, b], svc.Map.Objects);
+        Assert.True(svc.Undo());
+        Assert.Equal([tree, a], svc.Map.Objects);
+        Assert.True(svc.Undo());
+        Assert.Equal([tree], svc.Map.Objects);
+    }
+
+    [Fact]
     public void AddRemoveObject_UndoRedo()
     {
         var svc = new MapEditingService(new TileMap(2, 2), new FakeMapRepository());
