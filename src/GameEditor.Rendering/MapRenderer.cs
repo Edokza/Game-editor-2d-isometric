@@ -60,6 +60,7 @@ public static class MapRenderer
             if (tex.Id != 0)
             {
                 if (!IsTall(tex)) DrawTile(tex, top, Raylib.ColorBrightness(Color.White, shade));
+                if (id == 1) DrawRipple(top, x + y);
                 continue;
             }
             var color = Raylib.ColorBrightness(ColorOf(id), shade);
@@ -67,7 +68,30 @@ public static class MapRenderer
             Raylib.DrawTriangle(top, top + down, top + right, color);
             Raylib.DrawLineV(top, top + right, Outline);
             Raylib.DrawLineV(top, top + left, Outline);
+            if (id == 1) DrawRipple(top, x + y);
         }
+    }
+
+    /// <summary>Light streak + shadow streak under it, sliding up the tile with the 4.1 wave.
+    /// Horizontal: tint phase is x + y = screen Y, so crests line up across neighbours.</summary>
+    private static void DrawRipple(Vector2 top, int s)
+    {
+        // tile spans 2 units of x + y top→bottom = 3 rad of phase; crest where the tint is brightest (sin = -1)
+        float p = (float)Raylib.GetTime() * 3 + s * 1.5f;
+        float v = ((3 * MathF.PI / 2 - p) % MathF.Tau + MathF.Tau) % MathF.Tau / 3; // 0 top vertex .. 1 bottom
+        Streak(top, v, new Color(255, 255, 255, 90));
+        Streak(top, v + 0.06f, new Color(20, 40, 90, 70));
+    }
+
+    // width 60% of the diamond chord at v: stays inside the tile. Wavy: y bobs with screen X, so it continues into the neighbour
+    private static void Streak(Vector2 top, float v, Color color)
+    {
+        if (v > 1) return;
+        float hw = IsoMath.TileWidth / 2f * (1 - MathF.Abs(2 * v - 1)) * 0.6f, y = top.Y + v * IsoMath.TileHeight, t = (float)Raylib.GetTime();
+        Vector2 At(float px) => new(px, y + 3 * MathF.Sin(px * 0.1f + t * 2));
+        const int n = 8;
+        for (int i = 0; i < n; i++)
+            Raylib.DrawLineEx(At(top.X - hw + 2 * hw * i / n), At(top.X - hw + 2 * hw * (i + 1) / n), 2, color);
     }
 
     public static void DrawHighlight(TileCoord c, Vector2 origin, Color color)
