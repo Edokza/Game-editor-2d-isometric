@@ -15,6 +15,7 @@
   <ItemGroup>
     <None Include="..\..\assets\**" LinkBase="assets" CopyToOutputDirectory="PreserveNewest" />
     <!-- exported maps: copy a .json saved by the editor here; publish only, so dotnet run plays the editor's Documents maps -->
-    <None Update="maps\**" CopyToPublishDirectory="PreserveNewest" />
+    <!-- BundleMaps=false: the editor's bundled copy; Export puts the map next to the exe instead -->
+    <None Update="maps\**" CopyToPublishDirectory="PreserveNewest" Condition="'$(BundleMaps)' != 'false'" />
   </ItemGroup>
 </Project>

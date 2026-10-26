@@ -29,12 +29,12 @@ public sealed class JsonMapRepository(string folder) : IMapRepository
             ? [.. Directory.GetFiles(folder, "*.json").Select(f => Path.GetFileNameWithoutExtension(f)).Order()]
             : [];
 
-    private string PathOf(string name)
-    {
+    private string PathOf(string name) =>
+        IsValidName(name) ? Path.Combine(folder, name + ".json") : throw new ArgumentException($"Invalid map name '{name}'.");
+
+    /// <summary>Safe as one file/folder name; <see cref="GameExporter"/> uses the same rule.</summary>
+    internal static bool IsValidName(string name) =>
         // GetInvalidFileNameChars() lacks '\' on Linux; ".." blocks traversal-looking names
-        if (string.IsNullOrWhiteSpace(name) || name.Contains("..") || name.Contains('\\')
-            || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
-            throw new ArgumentException($"Invalid map name '{name}'.");
-        return Path.Combine(folder, name + ".json");
-    }
+        !string.IsNullOrWhiteSpace(name) && !name.Contains("..") && !name.Contains('\\')
+        && name.IndexOfAny(Path.GetInvalidFileNameChars()) < 0;
 }

@@ -1,10 +1,13 @@
+using System.Diagnostics;
 using System.Numerics;
 using GameEditor.Application;
+using GameEditor.Infrastructure;
 using ImGuiNET;
 
 namespace GameEditor.Editor;
 
-public sealed class FileMenu(MapEditingService service)
+/// <param name="docs">Documents/GameEditor: holds maps/ (saves) and export/.</param>
+public sealed class FileMenu(MapEditingService service, string docs)
 {
     private const string SaveAsPopup = "Save As";
     private const string DiscardPopup = "Unsaved changes";
@@ -20,6 +23,8 @@ public sealed class FileMenu(MapEditingService service)
     private string _name = "";
     private IReadOnlyList<string> _existing = [];
     private Result? _status;
+    private bool _exportAfterSave;
+    private (Result Status, string Folder)? _exported; // "Open folder" shows while _status is still this export's
 
     /// <summary>Runs <paramref name="onDiscard"/> now if clean, else after the user confirms.</summary>
     public void ConfirmDiscard(Action onDiscard)
@@ -53,6 +58,8 @@ public sealed class FileMenu(MapEditingService service)
                 else _openSaveAs = true;
             }
             if (ImGui.MenuItem("Save As...")) _openSaveAs = true;
+            ImGui.Separator();
+            if (ImGui.MenuItem("Export Game...")) ExportGame();
             ImGui.EndMenu();
         }
         if (ImGui.BeginMenu("Edit"))
@@ -72,6 +79,28 @@ public sealed class FileMenu(MapEditingService service)
         }
         if (_status is { } s)
             ImGui.TextColored(s.Success ? new Vector4(0.5f, 1, 0.5f, 1) : new Vector4(1, 0.4f, 0.4f, 1), Esc(s.Message));
+        if (_exported is { } e && _status == e.Status && ImGui.SmallButton("Open folder"))
+        {
+            try { Process.Start(new ProcessStartInfo(e.Folder) { UseShellExecute = true }); }
+            catch (Exception ex) { _status = new(false, $"Open folder failed: {ex.Message}"); } // folder deleted meanwhile
+        }
+    }
+
+    /// <summary>Exports the saved file, so unsaved or dirty maps are saved first (Save As when unnamed).</summary>
+    private void ExportGame()
+    {
+        if (service.CurrentName is not { } name)
+        {
+            _exportAfterSave = true;
+            _openSaveAs = true;
+            return;
+        }
+        if (service.IsDirty && (_status = service.Save(name)) is { Success: false }) return;
+
+        var outDir = Path.Combine(docs, "export");
+        _status = GameExporter.Export(Path.Combine(AppContext.BaseDirectory, "player", "GameEditor.Player.exe"),
+            Path.Combine(docs, "maps", name + ".json"), outDir, name);
+        _exported = _status.Value.Success ? (_status.Value, Path.Combine(outDir, name)) : null;
     }
 
     /// <summary>Call outside the menu bar (popup IDs must match where OpenPopup runs).</summary>
@@ -130,7 +159,11 @@ public sealed class FileMenu(MapEditingService service)
         }
 
         bool open = true;
-        if (!ImGui.BeginPopupModal(SaveAsPopup, ref open, ImGuiWindowFlags.AlwaysAutoResize)) return;
+        if (!ImGui.BeginPopupModal(SaveAsPopup, ref open, ImGuiWindowFlags.AlwaysAutoResize))
+        {
+            _exportAfterSave = false; // closed (Cancel or X) without saving: a later plain Save As must not export
+            return;
+        }
 
         if (ImGui.IsWindowAppearing()) ImGui.SetKeyboardFocusHere();
         bool submit = ImGui.InputText("Name", ref _name, 64, ImGuiInputTextFlags.EnterReturnsTrue);
@@ -145,6 +178,7 @@ public sealed class FileMenu(MapEditingService service)
         if (submit && name.Length > 0)
         {
             _status = service.Save(name);
+            if (_exportAfterSave && _status.Value.Success) ExportGame();
             ImGui.CloseCurrentPopup();
         }
         ImGui.EndPopup();

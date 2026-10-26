@@ -8,8 +8,9 @@ using Raylib_cs;
 using rlImGui_cs;
 
 const int MapSize = 20;
-var service = new MapEditingService(new TileMap(MapSize, MapSize), new JsonMapRepository(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "GameEditor", "maps")));
-var fileMenu = new FileMenu(service);
+var docs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "GameEditor");
+var service = new MapEditingService(new TileMap(MapSize, MapSize), new JsonMapRepository(Path.Combine(docs, "maps")));
+var fileMenu = new FileMenu(service, docs);
 var objectPanels = new ObjectPanels(service);
 var paintTool = new PaintTool(service, objectPanels);
 var scenePanel = new ScenePanel(service, paintTool, objectPanels);
