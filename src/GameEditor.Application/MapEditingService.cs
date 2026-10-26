@@ -89,6 +89,13 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
         if (Map.Solid.Contains(tileId) != solid) Do(new SolidCommand(Map, tileId, solid));
     }
 
+    /// <summary>One undo step; no-op when already that way.</summary>
+    public void SetSolidSprite(string sprite, bool solid)
+    {
+        Flush();
+        if (Map.SolidSprites.Contains(sprite) != solid) Do(new SolidSpriteCommand(Map, sprite, solid));
+    }
+
     public bool RemoveObject(int id)
     {
         Flush();
@@ -194,7 +201,7 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
         for (int y = 0; y < Math.Min(height, Map.Height); y++)
             for (int x = 0; x < Math.Min(width, Map.Width); x++)
                 tiles[y * width + x] = Map.Get(new TileCoord(x, y));
-        Do(new ResizeCommand(m => Map = m, Map, new TileMap(width, height, tiles, Map.Objects.Where(o => o.X < width && o.Y < height), Map.Solid)));
+        Do(new ResizeCommand(m => Map = m, Map, new TileMap(width, height, tiles, Map.Objects.Where(o => o.X < width && o.Y < height), Map.Solid, Map.SolidSprites)));
     }
 
     public Result Load(string name)

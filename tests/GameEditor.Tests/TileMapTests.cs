@@ -17,6 +17,18 @@ public class TileMapTests
     }
 
     [Fact]
+    public void SolidSprites_DefaultsWhenNotGiven_AndCopiesGiven()
+    {
+        Assert.Equal(["crate", "rock", "tree"], new TileMap(2, 2).SolidSprites.Order());
+        string[] given = ["bush"];
+        var map = new TileMap(1, 1, [0], solidSprites: given);
+        map.SetSolidSprite("tree", true);
+        map.SetSolidSprite("bush", false);
+        Assert.Equal(["tree"], map.SolidSprites);
+        Assert.Equal(["bush"], given);
+    }
+
+    [Fact]
     public void Ctor_WrongSize_Throws() =>
         Assert.Throws<ArgumentException>(() => new TileMap(3, 2, new int[5]));
 

@@ -73,7 +73,19 @@ public static class AssetsPanel
                     ImGui.PushID(k++);
                     if (rlImGui.ImageButton("##o", tex))
                         objectPanels.SelectedId = service.AddObject(name, map.Width / 2f, map.Height / 2f, name).Id;
-                    if (ImGui.IsItemHovered()) Tooltip(name);
+                    bool solid = map.SolidSprites.Contains(name);
+                    if (solid)
+                    {
+                        var min = ImGui.GetItemRectMin();
+                        var max = ImGui.GetItemRectMax();
+                        ImGui.GetWindowDrawList().AddTriangleFilled(new(max.X - 12, min.Y), new(max.X, min.Y), new(max.X, min.Y + 12), ImGui.GetColorU32(SolidMark));
+                    }
+                    if (ImGui.IsItemHovered()) Tooltip(solid ? name + " (Solid)" : name);
+                    if (ImGui.BeginPopupContextItem("solid"))
+                    {
+                        if (ImGui.MenuItem("Solid", "", solid)) service.SetSolidSprite(name, !solid);
+                        ImGui.EndPopup();
+                    }
                     ImGui.PopID();
                 }
                 if (Sprites.Objects.Count == 0) ImGui.TextDisabled("(no assets/objects/*.png)");
