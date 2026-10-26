@@ -89,7 +89,7 @@ public sealed class ScenePanel(MapEditingService service, PaintTool paintTool, O
         }
 
         Raylib.BeginTextureMode(_rt);
-        Raylib.ClearBackground(new Color(30, 30, 36, 255));
+        MapRenderer.DrawBackground(_rt.Texture.Width, _rt.Texture.Height);
         Raylib.BeginMode2D(_camera);
         MapRenderer.Draw(map, Vector2.Zero);
         MapRenderer.DrawObjects(map, Vector2.Zero, Play is null ? objectPanels.SelectedId : null);

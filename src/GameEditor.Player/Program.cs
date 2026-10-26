@@ -42,7 +42,7 @@ while (!Raylib.WindowShouldClose())
         quitUntil = Raylib.GetTime() + 2;
     }
     Raylib.BeginDrawing();
-    Raylib.ClearBackground(new Color(30, 30, 36, 255));
+    MapRenderer.DrawBackground(Raylib.GetScreenWidth(), Raylib.GetScreenHeight());
     if (play is null) Raylib.DrawText(error, 20, 20, 20, Color.RayWhite);
     else
     {

@@ -21,6 +21,10 @@ public static class MapRenderer
 
     public static Color ColorOf(int tileId) => (uint)tileId < (uint)Palette.Length ? Palette[tileId] : Color.Magenta;
 
+    /// <summary>Dark blue top → grey-purple bottom; screen space, call outside BeginMode2D.</summary>
+    public static void DrawBackground(int w, int h) =>
+        Raylib.DrawRectangleGradientV(0, 0, w, h, new Color(18, 24, 52, 255), new Color(78, 70, 96, 255));
+
     /// <summary>Flat tiles only; tall ones (blocks) are depth-sorted with objects in <see cref="DrawObjects"/>.
     /// <paramref name="origin"/> = screen position of tile (0,0) top vertex.</summary>
     public static void Draw(TileMap map, Vector2 origin)
@@ -28,6 +32,7 @@ public static class MapRenderer
         var right = new Vector2(IsoMath.TileWidth / 2f, IsoMath.TileHeight / 2f);
         var left = new Vector2(-right.X, right.Y);
         var down = new Vector2(0, IsoMath.TileHeight);
+        var wall = new Vector2(0, IsoMath.TileHeight / 2f);
 
         for (int y = 0; y < map.Height; y++)
         for (int x = 0; x < map.Width; x++)
@@ -36,6 +41,20 @@ public static class MapRenderer
             var top = origin + IsoMath.TileToScreen(c);
             int id = map.Get(c);
             var tex = Sprites.Tile(id);
+            // front edges get a wall under the diamond edge: map reads as a floating island
+            var wallColor = (uint)id < (uint)Palette.Length ? Palette[id] : Palette[4];
+            if (y == map.Height - 1)
+            {
+                var col = Raylib.ColorBrightness(wallColor, -0.3f);
+                Raylib.DrawTriangle(top + left, top + left + wall, top + down + wall, col);
+                Raylib.DrawTriangle(top + left, top + down + wall, top + down, col);
+            }
+            if (x == map.Width - 1)
+            {
+                var col = Raylib.ColorBrightness(wallColor, -0.5f);
+                Raylib.DrawTriangle(top + down, top + down + wall, top + right + wall, col);
+                Raylib.DrawTriangle(top + down, top + right + wall, top + right, col);
+            }
             if (tex.Id != 0)
             {
                 if (!IsTall(tex)) DrawTile(tex, top);
