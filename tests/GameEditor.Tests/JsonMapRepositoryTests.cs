@@ -110,6 +110,26 @@ public sealed class JsonMapRepositoryTests : IDisposable
         Assert.Empty(map.Objects);
     }
 
+    [Theory]
+    [InlineData(new int[0])]
+    [InlineData(new[] { 0, 3, 9 })]
+    public void Solid_RoundTrip(int[] solid)
+    {
+        var repo = new JsonMapRepository(Folder);
+        repo.Save(new TileMap(1, 1, [0], solid: solid), "a");
+
+        Assert.Equal(solid, repo.Load("a").Solid.Order());
+    }
+
+    [Fact]
+    public void OldFileWithoutSolid_LoadsDefault()
+    {
+        Directory.CreateDirectory(Folder);
+        File.WriteAllText(Path.Combine(Folder, "old.json"), """{"Width":1,"Height":1,"Tiles":[2]}""");
+
+        Assert.Equal(TileMap.DefaultSolid, new JsonMapRepository(Folder).Load("old").Solid.Order());
+    }
+
     [Fact]
     public void OldObjectWithoutSprite_LoadsNull()
     {

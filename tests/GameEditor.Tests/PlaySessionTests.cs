@@ -73,6 +73,20 @@ public class PlaySessionTests
     }
 
     [Fact]
+    public void Move_UsesMapSolid_CopiedFromSource()
+    {
+        var source = new TileMap(4, 4, new int[16], solid: [0]); // every tile is id 0
+        var play = new PlaySession(source);
+        Walk(play, 1, 0);
+        Assert.True(play.Hero.X < 3); // can't leave tile (2,2)
+
+        play.Map.SetSolid(0, false);
+        Assert.Contains(0, source.Solid); // copy, not shared
+        Walk(play, 1, 0);
+        Assert.True(play.Hero.X >= 3);
+    }
+
+    [Fact]
     public void Move_SpawnedInSolid_CanWalkOut()
     {
         var play = Session((2, 2));

@@ -59,6 +59,13 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
         return o;
     }
 
+    /// <summary>One undo step; no-op when already that way.</summary>
+    public void SetSolid(int tileId, bool solid)
+    {
+        Flush();
+        if (Map.Solid.Contains(tileId) != solid) Do(new SolidCommand(Map, tileId, solid));
+    }
+
     public bool RemoveObject(int id)
     {
         Flush();
@@ -141,7 +148,7 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
         }
     }
 
-    /// <summary>Blank map; drops any unsaved edits. Each side 1–<see cref="MaxSize"/>.</summary>
+    /// <summary>Blank map with <see cref="TileMap.DefaultSolid"/>; drops any unsaved edits. Each side 1–<see cref="MaxSize"/>.</summary>
     public void New(int width, int height)
     {
         CheckSize(width, height);
@@ -164,7 +171,7 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
         for (int y = 0; y < Math.Min(height, Map.Height); y++)
             for (int x = 0; x < Math.Min(width, Map.Width); x++)
                 tiles[y * width + x] = Map.Get(new TileCoord(x, y));
-        Map = new TileMap(width, height, tiles, Map.Objects.Where(o => o.X < width && o.Y < height));
+        Map = new TileMap(width, height, tiles, Map.Objects.Where(o => o.X < width && o.Y < height), Map.Solid);
         _undo.Clear();
         _dirty = true;
     }

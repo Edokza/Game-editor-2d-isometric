@@ -17,7 +17,7 @@ public sealed class PlaySession
 
     public PlaySession(TileMap source)
     {
-        Map = new TileMap(source.Width, source.Height, source.Tiles.ToArray(), source.Objects);
+        Map = new TileMap(source.Width, source.Height, source.Tiles.ToArray(), source.Objects, source.Solid);
         _hero = Map.Objects.Count;
         Map.Insert(_hero, new MapObject(Map.NextObjectId, "Hero", Map.Width / 2f, Map.Height / 2f, "hero_se"));
     }
@@ -41,7 +41,7 @@ public sealed class PlaySession
     {
         var from = Tile(fromX, fromY);
         var to = Tile(toX, toY);
-        return to != from && (!Map.InBounds(to) || Tiles.IsSolid(Map.Get(to)));
+        return to != from && (!Map.InBounds(to) || Map.Solid.Contains(Map.Get(to)));
     }
 
     private static TileCoord Tile(float x, float y) => new((int)MathF.Floor(x), (int)MathF.Floor(y));

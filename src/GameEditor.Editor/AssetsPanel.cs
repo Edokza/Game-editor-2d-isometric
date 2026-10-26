@@ -7,10 +7,11 @@ using rlImGui_cs;
 
 namespace GameEditor.Editor;
 
-/// <summary>Tiles tab picks the paint tile; Objects tab adds an object with that sprite at the map center.</summary>
+/// <summary>Tiles tab picks the paint tile, right-click toggles Solid; Objects tab adds an object with that sprite at the map center.</summary>
 public static class AssetsPanel
 {
     private static readonly Vector4 Selected = new(0.9f, 0.75f, 0.2f, 1f);
+    private static readonly Vector4 SolidMark = new(0.85f, 0.2f, 0.2f, 1f);
 
     public static void Draw(PaintTool tool, MapEditingService service, ObjectPanels objectPanels)
     {
@@ -35,12 +36,23 @@ public static class AssetsPanel
                         var c = MapRenderer.Palette[i];
                         clicked = ImGui.ColorButton("##t", new Vector4(c.R, c.G, c.B, c.A) / 255f, ImGuiColorEditFlags.NoTooltip, new(IsoMath.TileWidth, IsoMath.TileHeight));
                     }
+                    var min = ImGui.GetItemRectMin();
+                    var max = ImGui.GetItemRectMax();
+                    var draw = ImGui.GetWindowDrawList();
                     // outline, not a button color: ColorButton ignores ImGuiCol.Button
-                    if (i == tool.TileId) ImGui.GetWindowDrawList().AddRect(ImGui.GetItemRectMin(), ImGui.GetItemRectMax(), ImGui.GetColorU32(Selected), 0, ImDrawFlags.None, 2);
+                    if (i == tool.TileId) draw.AddRect(min, max, ImGui.GetColorU32(Selected), 0, ImDrawFlags.None, 2);
+                    bool solid = service.Map.Solid.Contains(i);
+                    if (solid) draw.AddTriangleFilled(new(max.X - 12, min.Y), new(max.X, min.Y), new(max.X, min.Y + 12), ImGui.GetColorU32(SolidMark));
                     if (ImGui.BeginItemTooltip())
                     {
                         ImGui.Value("Tile", i); // formats on the native side: no string per frame while hovered
+                        if (solid) ImGui.TextUnformatted("Solid");
                         ImGui.EndTooltip();
+                    }
+                    if (ImGui.BeginPopupContextItem("solid"))
+                    {
+                        if (ImGui.MenuItem("Solid", "", solid)) service.SetSolid(i, !solid);
+                        ImGui.EndPopup();
                     }
                     if (clicked) tool.TileId = i;
                     ImGui.PopID();
