@@ -108,6 +108,13 @@ public static class MapRenderer
     {
         var rect = ObjectRect(o, origin);
         var tex = Sprites.Object(o.Sprite);
+        // shadow at anchor (bottom-center, raised 2px to tuck under the base): faint outer + darker inner ellipse = soft edge
+        if (o.Sprite != "spawn")
+        {
+            int cx = (int)(rect.X + rect.Width / 2), cy = (int)(rect.Y + rect.Height) - 2;
+            Raylib.DrawEllipse(cx, cy, rect.Width * 0.4f, rect.Width * 0.2f, new Color(0, 0, 0, 40));
+            Raylib.DrawEllipse(cx, cy, rect.Width * 0.28f, rect.Width * 0.14f, new Color(0, 0, 0, 50));
+        }
         if (tex.Id != 0) Raylib.DrawTextureV(tex, rect.Position, Color.White);
         else
         {
