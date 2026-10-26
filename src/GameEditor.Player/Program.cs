@@ -26,6 +26,7 @@ catch (Exception e)
     error = $"Load '{name}' failed: {e.Message}";
 }
 
+RaylibLog.Install();
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow | ConfigFlags.VSyncHint);
 Raylib.InitWindow(1280, 720, name ?? "Game");
 Sprites.Load(Path.Combine(AppContext.BaseDirectory, "assets"));

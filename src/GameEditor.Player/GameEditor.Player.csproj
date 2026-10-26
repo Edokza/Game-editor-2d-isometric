@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
     <!-- publish = one exe: runtime, raylib.dll, assets and maps extracted on first run -->
     <PublishSingleFile>true</PublishSingleFile>
     <SelfContained Condition="'$(_IsPublishing)' == 'true'">true</SelfContained>

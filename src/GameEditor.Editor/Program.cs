@@ -18,6 +18,7 @@ var scenePanel = new ScenePanel(service, paintTool, objectPanels);
 var quit = false;
 var layoutChecked = false;
 
+RaylibLog.Install();
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow | ConfigFlags.VSyncHint);
 var version = typeof(Program).Assembly.GetName().Version!.ToString(3);
 (string? Name, bool Dirty)? titled = null; // what the title shows: rebuilt only on change, not per frame
