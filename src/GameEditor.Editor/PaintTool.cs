@@ -8,7 +8,7 @@ namespace GameEditor.Editor;
 
 public enum PaintMode { Brush, Fill }
 
-/// <summary>Left-drag: on an object moves it, elsewhere paints tiles (Fill: one click floods the region). Called by ScenePanel inside its texture mode; mouse is panel-local.</summary>
+/// <summary>Left-drag: on an object moves it, elsewhere paints tiles (Fill: one click floods the region). Right-click picks the tile under the mouse. Called by ScenePanel inside its texture mode; mouse is panel-local.</summary>
 public sealed class PaintTool(MapEditingService service, ObjectPanels objectPanels)
 {
     private bool _painting;
@@ -29,6 +29,9 @@ public sealed class PaintTool(MapEditingService service, ObjectPanels objectPane
             MapRenderer.DrawHighlight(hover, Vector2.Zero, Color.Yellow);
             Raylib.EndMode2D();
         }
+
+        // eyedropper: only swaps TileId, so an open stroke/drag keeps going and Mode stays
+        if (sceneHovered && map.InBounds(hover) && Raylib.IsMouseButtonPressed(MouseButton.Right)) TileId = map.Get(hover);
 
         if (!_painting && _drag is null && sceneHovered && Raylib.IsMouseButtonPressed(MouseButton.Left))
         {
