@@ -46,6 +46,9 @@ while (!quit)
     // here, not in ScenePanel: undo/redo must work while Scene is hidden or collapsed
     if (!ImGui.GetIO().WantCaptureKeyboard)
     {
+        // view only, so play mode too
+        if (Raylib.IsKeyPressed(KeyboardKey.Q)) scenePanel.Rotate(-1);
+        if (Raylib.IsKeyPressed(KeyboardKey.E)) scenePanel.Rotate(1);
         if (play is not null) play.Move(GameInput.Walk(), Raylib.GetFrameTime());
         else if (Raylib.IsKeyDown(KeyboardKey.LeftControl) || Raylib.IsKeyDown(KeyboardKey.RightControl))
         {
