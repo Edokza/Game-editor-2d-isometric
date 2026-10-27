@@ -29,16 +29,18 @@ public sealed class PlaySession
         Map.Insert(_hero, new MapObject(Map.NextObjectId, "Hero", x, y, "hero_se"));
     }
 
-    /// <summary><paramref name="dir"/> in tile space, any length. One axis at a time so a blocked axis still lets the hero slide along the wall.</summary>
-    public void Move(Vector2 dir, float dt)
+    /// <summary><paramref name="dir"/> in <paramref name="view"/> tile space (so WASD stays screen-relative after a rotation), any length;
+    /// default view = map tile space. One axis at a time so a blocked axis still lets the hero slide along the wall.</summary>
+    public void Move(Vector2 dir, float dt, IsoView view = default)
     {
-        var step = Vector2.Normalize(dir) * Speed * Math.Clamp(dt, 0, MaxDt);
+        var step = Vector2.Normalize(view.DirFromView(dir)) * Speed * Math.Clamp(dt, 0, MaxDt);
         if (!float.IsFinite(step.X) || !float.IsFinite(step.Y)) return; // zero dir normalizes to NaN
         var h = Hero;
         float x = Blocked(h.X, h.Y, h.X + step.X, h.Y) ? h.X : h.X + step.X;
         float y = Blocked(x, h.Y, x, h.Y + step.Y) ? h.Y : h.Y + step.Y;
-        // screen y grows with x + y, screen x with x - y; pure left/right (A/D) picks sw/ne, pure up/down (W/S) keeps the side
-        float down = step.X + step.Y, right = step.X - step.Y;
+        // sprites face screen directions, so use the view direction: screen y grows with x′ + y′, screen x with x′ − y′;
+        // pure left/right (A/D) picks sw/ne, pure up/down (W/S) keeps the side
+        float down = dir.X + dir.Y, right = dir.X - dir.Y;
         bool south = down != 0 ? down > 0 : right < 0;
         bool east = right != 0 ? right > 0 : h.Sprite?.EndsWith('w') != true;
         Map.Replace(_hero, h with { X = x, Y = y, Sprite = $"hero_{(south ? 's' : 'n')}{(east ? 'e' : 'w')}" });
