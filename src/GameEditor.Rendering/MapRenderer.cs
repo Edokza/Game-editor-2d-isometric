@@ -22,8 +22,8 @@ public static class MapRenderer
     public static Color ColorOf(int tileId) => (uint)tileId < (uint)Palette.Length ? Palette[tileId] : Color.Magenta;
 
     /// <summary>Flat tiles only; tall ones (blocks) are depth-sorted with objects in <see cref="DrawObjects"/>.
-    /// <paramref name="origin"/> = screen position of tile (0,0) top vertex.</summary>
-    public static void Draw(TileMap map, Vector2 origin)
+    /// <paramref name="origin"/> = screen position of view tile (0,0) top vertex. <paramref name="view"/> default = unrotated.</summary>
+    public static void Draw(TileMap map, Vector2 origin, IsoView view = default)
     {
         var right = new Vector2(IsoMath.TileWidth / 2f, IsoMath.TileHeight / 2f);
         var left = new Vector2(-right.X, right.Y);
@@ -33,7 +33,7 @@ public static class MapRenderer
         for (int x = 0; x < map.Width; x++)
         {
             var c = new TileCoord(x, y);
-            var top = origin + IsoMath.TileToScreen(c);
+            var top = origin + view.TileToScreen(c);
             int id = map.Get(c);
             var tex = Sprites.Tile(id);
             if (tex.Id != 0)
@@ -49,9 +49,10 @@ public static class MapRenderer
         }
     }
 
-    public static void DrawHighlight(TileCoord c, Vector2 origin, Color color)
+    /// <summary><paramref name="c"/> = data cell.</summary>
+    public static void DrawHighlight(TileCoord c, Vector2 origin, Color color, IsoView view = default)
     {
-        var top = origin + IsoMath.TileToScreen(c);
+        var top = origin + view.TileToScreen(c);
         var right = top + new Vector2(IsoMath.TileWidth / 2f, IsoMath.TileHeight / 2f);
         var left = top + new Vector2(-IsoMath.TileWidth / 2f, IsoMath.TileHeight / 2f);
         var bottom = top + new Vector2(0, IsoMath.TileHeight);
@@ -62,11 +63,11 @@ public static class MapRenderer
     }
 
     /// <summary>Sprite bounds (24×40 placeholder box without one); bottom center = object position.</summary>
-    public static Rectangle ObjectRect(MapObject o, Vector2 origin)
+    public static Rectangle ObjectRect(MapObject o, Vector2 origin, IsoView view = default)
     {
         var tex = Sprites.Object(o.Sprite);
         float w = tex.Id != 0 ? tex.Width : 24, h = tex.Id != 0 ? tex.Height : 40;
-        var foot = origin + IsoMath.TileToScreen(o.X, o.Y);
+        var foot = origin + view.TileToScreen(o.X, o.Y);
         // floor: odd widths and fractional positions would land texels between screen pixels
         return new Rectangle(MathF.Floor(foot.X - w / 2), MathF.Floor(foot.Y - h), w, h);
     }
@@ -86,27 +87,30 @@ public static class MapRenderer
     }
 
     /// <summary>Objects and tall tiles back to front, after <see cref="Draw"/>.</summary>
-    public static void DrawObjects(TileMap map, Vector2 origin, int? selectedId)
+    public static void DrawObjects(TileMap map, Vector2 origin, int? selectedId, IsoView view = default)
     {
-        var sorted = DrawOrder(map.Objects);
+        var sorted = DrawOrder(map.Objects, view);
         int k = 0;
-        // diagonal s = x + y: a tall tile's depth is its center, s + 1; tiles on one diagonal never overlap each other
-        for (int s = 0; s <= map.Width + map.Height - 2; s++)
+        // from map, not view.ViewWidth: a default view has no size
+        bool odd = (view.Rotation & 1) != 0;
+        int w = odd ? map.Height : map.Width, h = odd ? map.Width : map.Height;
+        // view diagonal s = x′ + y′: a tall tile's depth is its center, s + 1; tiles on one diagonal never overlap each other
+        for (int s = 0; s <= w + h - 2; s++)
         {
-            while (k < sorted.Count && sorted[k].X + sorted[k].Y < s + 1) DrawObject(sorted[k++], origin, selectedId);
-            for (int x = Math.Max(0, s - map.Height + 1); x <= Math.Min(s, map.Width - 1); x++)
+            while (k < sorted.Count && view.Depth(sorted[k].X, sorted[k].Y) < s + 1) DrawObject(sorted[k++], origin, selectedId, view);
+            for (int x = Math.Max(0, s - h + 1); x <= Math.Min(s, w - 1); x++)
             {
-                var c = new TileCoord(x, s - x);
+                var c = view.FromView(new TileCoord(x, s - x));
                 var tex = Sprites.Tile(map.Get(c));
-                if (tex.Id != 0 && IsTall(tex)) DrawTile(tex, origin + IsoMath.TileToScreen(c));
+                if (tex.Id != 0 && IsTall(tex)) DrawTile(tex, origin + view.TileToScreen(c));
             }
         }
-        while (k < sorted.Count) DrawObject(sorted[k++], origin, selectedId);
+        while (k < sorted.Count) DrawObject(sorted[k++], origin, selectedId, view);
     }
 
-    private static void DrawObject(MapObject o, Vector2 origin, int? selectedId)
+    private static void DrawObject(MapObject o, Vector2 origin, int? selectedId, IsoView view)
     {
-        var rect = ObjectRect(o, origin);
+        var rect = ObjectRect(o, origin, view);
         var tex = Sprites.Object(o.Sprite);
         if (tex.Id != 0) Raylib.DrawTextureV(tex, rect.Position, Color.White);
         else
@@ -119,33 +123,37 @@ public static class MapRenderer
 
     /// <summary>Front-most object under <paramref name="p"/> (same origin as drawing), or null when none is there
     /// or a tall tile <see cref="DrawObjects"/> draws later covers it, so a click on a block paints instead of grabbing what it hides.</summary>
-    public static MapObject? ObjectAt(TileMap map, Vector2 origin, Vector2 p)
+    public static MapObject? ObjectAt(TileMap map, Vector2 origin, Vector2 p, IsoView view = default)
     {
-        var hit = DrawOrder(map.Objects).LastOrDefault(o => Raylib.CheckCollisionPointRec(p, ObjectRect(o, origin)));
+        var hit = DrawOrder(map.Objects, view).LastOrDefault(o => Raylib.CheckCollisionPointRec(p, ObjectRect(o, origin, view)));
         if (hit is null) return null;
+        float depth = view.Depth(hit.X, hit.Y);
         // full scan: runs once per click, not per frame. Objects behind hit are drawn before the same tiles, so covered too
         for (int y = 0; y < map.Height; y++)
         for (int x = 0; x < map.Width; x++)
         {
-            if (hit.X + hit.Y >= x + y + 1) continue; // same test as DrawObjects: this tile is drawn before hit
             var c = new TileCoord(x, y);
+            var v = view.ToView(c);
+            if (depth >= v.X + v.Y + 1) continue; // same test as DrawObjects: this tile is drawn before hit
             var tex = Sprites.Tile(map.Get(c));
-            if (tex.Id != 0 && IsTall(tex) && BlockCovers(tex, origin + IsoMath.TileToScreen(c), p)) return null;
+            if (tex.Id != 0 && IsTall(tex) && BlockCovers(tex, origin + view.TileToScreen(c), p)) return null;
         }
         return hit;
     }
 
     private static readonly List<MapObject> Sorted = []; // reused: no per-frame allocation
+    private static IsoView _sortView; // read by ByDepth: a capturing lambda would allocate every frame
 
-    // Y-sort: larger X+Y = nearer the viewer = drawn later; ties by Id so the order is the same every frame
+    // Y-sort: larger x′+y′ = nearer the viewer = drawn later; ties by Id so the order is the same every frame
     private static readonly Comparison<MapObject> ByDepth = (a, b) =>
-        (a.X + a.Y).CompareTo(b.X + b.Y) is var c and not 0 ? c : a.Id.CompareTo(b.Id);
+        _sortView.Depth(a.X, a.Y).CompareTo(_sortView.Depth(b.X, b.Y)) is var c and not 0 ? c : a.Id.CompareTo(b.Id);
 
     /// <summary>Shared buffer: valid until the next call.</summary>
-    private static List<MapObject> DrawOrder(IReadOnlyList<MapObject> objects)
+    private static List<MapObject> DrawOrder(IReadOnlyList<MapObject> objects, IsoView view)
     {
         Sorted.Clear();
         Sorted.AddRange(objects);
+        _sortView = view;
         Sorted.Sort(ByDepth);
         return Sorted;
     }
