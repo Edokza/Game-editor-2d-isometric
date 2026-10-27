@@ -54,6 +54,23 @@ public readonly struct IsoView(int rotation, int width, int height)
         _ => v,
     };
 
+    /// <summary>A direction (no position) from view to data space, e.g. a screen-relative walk direction.</summary>
+    public Vector2 DirFromView(Vector2 d) => Rotation switch
+    {
+        1 => new(d.Y, -d.X),
+        2 => -d,
+        3 => new(-d.Y, d.X),
+        _ => d,
+    };
+
+    public Vector2 DirToView(Vector2 d) => Rotation switch
+    {
+        1 => new(-d.Y, d.X),
+        2 => -d,
+        3 => new(d.Y, -d.X),
+        _ => d,
+    };
+
     /// <summary>Screen point of data cell <paramref name="c"/>'s top vertex, as drawn in this view.</summary>
     public Vector2 TileToScreen(TileCoord c) => IsoMath.TileToScreen(ToView(c));
 

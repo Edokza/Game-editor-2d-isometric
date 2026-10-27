@@ -91,6 +91,17 @@ public class IsoViewTests
         Assert.False(map.InBounds(view.ScreenToTile(new Vector2(0, float.PositiveInfinity))));
     }
 
+    [Theory]
+    [MemberData(nameof(Rotations))]
+    public void DirToView_MatchesPointDifference(int r)
+    {
+        var view = new IsoView(r, W, H);
+        var d = new Vector2(0.5f, -0.25f);
+        var moved = view.ToView(1 + d.X, 2 + d.Y) - view.ToView(1, 2);
+        Assert.Equal(moved, view.DirToView(d));
+        Assert.Equal(d, view.DirFromView(view.DirToView(d)));
+    }
+
     [Fact]
     public void Rotation_Wraps()
     {

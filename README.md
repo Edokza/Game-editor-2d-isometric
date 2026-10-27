@@ -51,7 +51,8 @@ dotnet run --project src/GameEditor.Editor
 | Ctrl+S / Ctrl+Shift+S | Save / Save As |
 | Delete / Ctrl+D | Delete / duplicate the selected object |
 | Play / Stop (menu bar) | Enter / leave Play mode |
-| WASD / arrow keys | Walk the hero (Play mode) |
+| Q / E | Rotate the view 90° left / right around the map center (also in Play mode; view only, not saved) |
+| WASD / arrow keys | Walk the hero (Play mode), relative to the screen |
 
 Editing is disabled during Play mode. Stop restores the map and zoom exactly as they were.
 
@@ -114,7 +115,7 @@ Run a saved map without exporting:
 dotnet run --project src/GameEditor.Player -- <map name>
 ```
 
-In the game: WASD / arrow keys walk, F11 toggles fullscreen, Esc twice quits.
+In the game: WASD / arrow keys walk (always relative to the screen), Q / E rotate the view 90°, F11 toggles fullscreen, Esc twice quits. Every run starts unrotated.
 
 With no name, the first map is loaded. The Player reads maps from `maps/` next to its exe if it contains any `.json`, otherwise from `Documents/GameEditor/maps`.
 

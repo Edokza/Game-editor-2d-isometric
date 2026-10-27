@@ -49,7 +49,7 @@ while (!quit)
         // view only, so play mode too
         if (Raylib.IsKeyPressed(KeyboardKey.Q)) scenePanel.Rotate(-1);
         if (Raylib.IsKeyPressed(KeyboardKey.E)) scenePanel.Rotate(1);
-        if (play is not null) play.Move(GameInput.Walk(), Raylib.GetFrameTime());
+        if (play is not null) play.Move(GameInput.Walk(), Raylib.GetFrameTime(), new IsoView(scenePanel.Rotation, play.Map.Width, play.Map.Height));
         else if (Raylib.IsKeyDown(KeyboardKey.LeftControl) || Raylib.IsKeyDown(KeyboardKey.RightControl))
         {
             if (Raylib.IsKeyPressed(KeyboardKey.Z)) service.Undo();

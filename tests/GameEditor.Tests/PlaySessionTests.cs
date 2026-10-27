@@ -188,4 +188,33 @@ public class PlaySessionTests
         play.Move(default, 1 / 60f);
         Assert.Equal("hero_nw", play.Hero.Sprite);
     }
+
+    public static TheoryData<int> Rotations => [0, 1, 2, 3];
+
+    [Theory]
+    [MemberData(nameof(Rotations))]
+    public void Move_W_GoesUpTheScreen_AtEveryRotation(int r)
+    {
+        var play = new PlaySession(new TileMap(8, 8));
+        var view = new IsoView(r, 8, 8);
+        var before = view.TileToScreen(play.Hero.X, play.Hero.Y);
+        for (int i = 0; i < 10; i++) play.Move(new(-1, -1), 1 / 60f, view); // W
+        var after = view.TileToScreen(play.Hero.X, play.Hero.Y);
+        Assert.True(after.Y < before.Y, $"{before} -> {after}");
+        Assert.Equal(before.X, after.X, 3);
+    }
+
+    [Theory]
+    [MemberData(nameof(Rotations))]
+    public void Move_SpriteFacesScreenDirection_AtEveryRotation(int r)
+    {
+        var play = new PlaySession(new TileMap(8, 8));
+        var view = new IsoView(r, 8, 8);
+        play.Move(new(1, -1), 1 / 60f, view); // D
+        Assert.Equal("hero_ne", play.Hero.Sprite);
+        play.Move(new(-1, 1), 1 / 60f, view); // A
+        Assert.Equal("hero_sw", play.Hero.Sprite);
+        play.Move(new(1, 1), 1 / 60f, view); // S keeps the left side
+        Assert.Equal("hero_sw", play.Hero.Sprite);
+    }
 }
