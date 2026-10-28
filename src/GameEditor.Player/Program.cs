@@ -33,6 +33,7 @@ Sprites.Load(Path.Combine(AppContext.BaseDirectory, "assets"));
 Raylib.SetExitKey(KeyboardKey.Null); // Esc quits only when pressed twice; window X still closes at once
 var camera = new Camera2D { Zoom = 1f };
 double quitUntil = 0;
+int rotation = 0; // view only: every run starts unrotated
 
 while (!Raylib.WindowShouldClose())
 {
@@ -47,12 +48,15 @@ while (!Raylib.WindowShouldClose())
     if (play is null) Raylib.DrawText(error, 20, 20, 20, Color.RayWhite);
     else
     {
-        play.Move(GameInput.Walk(), Raylib.GetFrameTime());
+        if (Raylib.IsKeyPressed(KeyboardKey.Q)) rotation = (rotation + 3) % 4;
+        if (Raylib.IsKeyPressed(KeyboardKey.E)) rotation = (rotation + 1) % 4;
+        var view = new IsoView(rotation, play.Map.Width, play.Map.Height);
+        play.Move(GameInput.Walk(), Raylib.GetFrameTime(), view);
         camera.Offset = new Vector2(Raylib.GetScreenWidth(), Raylib.GetScreenHeight()) / 2f;
-        camera.Target = IsoMath.TileToScreen(play.Hero.X, play.Hero.Y);
+        camera.Target = view.TileToScreen(play.Hero.X, play.Hero.Y);
         Raylib.BeginMode2D(camera);
-        MapRenderer.Draw(play.Map, Vector2.Zero);
-        MapRenderer.DrawObjects(play.Map, Vector2.Zero, null);
+        MapRenderer.Draw(play.Map, Vector2.Zero, view);
+        MapRenderer.DrawObjects(play.Map, Vector2.Zero, null, view);
         Raylib.EndMode2D();
     }
     if (Raylib.GetTime() < quitUntil) Raylib.DrawText("Press Esc again to quit", 20, Raylib.GetScreenHeight() - 40, 20, Color.RayWhite);

@@ -23,6 +23,12 @@ public sealed class ScenePanel(MapEditingService service, PaintTool paintTool, O
     /// <summary>Outline every tile over the map; editor only.</summary>
     public bool Grid { get; set; }
 
+    /// <summary>View rotation 0–3 (90° steps, clockwise); view only, also kept in play mode.</summary>
+    public int Rotation { get; private set; }
+
+    /// <summary>+1 turns the map clockwise around its own center: <c>_pan</c> is relative to the map center, so leaving it alone keeps the center in place on screen.</summary>
+    public void Rotate(int steps) => Rotation = ((Rotation + steps) % 4 + 4) % 4;
+
     public void Draw()
     {
         if (Play is not null) _zoomBeforePlay ??= _camera.Zoom;
@@ -56,14 +62,10 @@ public sealed class ScenePanel(MapEditingService service, PaintTool paintTool, O
             _pan += Raylib.GetMouseDelta() / _camera.Zoom;
 
         var map = Play?.Map ?? service.Map;
-        // panel center looks at the map's iso bounding box center (tile (0,0) top vertex = world origin), minus pan
+        var view = new IsoView(Rotation, map.Width, map.Height); // per frame: New/Open/Resize change the size
         _camera.Offset = size / 2f;
         // play: follow the hero like the Player does; _pan stays untouched so Stop returns to it
-        _camera.Target = Play is not null
-            ? IsoMath.TileToScreen(Play.Hero.X, Play.Hero.Y)
-            : new Vector2(
-                (map.Width - map.Height) * IsoMath.TileWidth / 4f,
-                (map.Width + map.Height) * IsoMath.TileHeight / 4f) - _pan;
+        _camera.Target = Play is not null ? view.TileToScreen(Play.Hero.X, Play.Hero.Y) : MapCenter(view) - _pan;
 
         // zoom toward mouse: keep the world point under the cursor fixed (play: zoom around the hero at center)
         float wheel = Raylib.GetMouseWheelMove();
@@ -91,19 +93,24 @@ public sealed class ScenePanel(MapEditingService service, PaintTool paintTool, O
         Raylib.BeginTextureMode(_rt);
         MapRenderer.DrawBackground(_rt.Texture.Width, _rt.Texture.Height);
         Raylib.BeginMode2D(_camera);
-        MapRenderer.Draw(map, Vector2.Zero);
-        MapRenderer.DrawObjects(map, Vector2.Zero, Play is null ? objectPanels.SelectedId : null);
+        MapRenderer.Draw(map, Vector2.Zero, view);
+        MapRenderer.DrawObjects(map, Vector2.Zero, Play is null ? objectPanels.SelectedId : null, view);
         // ponytail: 4 lines per tile every frame, 256x256 = 262k lines; cull to the view if big maps lag
         if (Grid && Play is null)
             for (int y = 0; y < map.Height; y++)
             for (int x = 0; x < map.Width; x++)
-                MapRenderer.DrawHighlight(new TileCoord(x, y), Vector2.Zero, GridColor);
+                MapRenderer.DrawHighlight(new TileCoord(x, y), Vector2.Zero, GridColor, view);
         Raylib.EndMode2D();
-        if (Play is null) paintTool.Update(_camera, mouse, hovered);
+        if (Play is null) paintTool.Update(_camera, mouse, hovered, view);
         Raylib.EndTextureMode();
 
         ImGui.End();
     }
+
+    /// <summary>Center of the map's iso bounding box as drawn (view tile (0,0) top vertex = world origin).</summary>
+    private static Vector2 MapCenter(IsoView view) => new(
+        (view.ViewWidth - view.ViewHeight) * IsoMath.TileWidth / 4f,
+        (view.ViewWidth + view.ViewHeight) * IsoMath.TileHeight / 4f);
 
     public void Dispose()
     {
