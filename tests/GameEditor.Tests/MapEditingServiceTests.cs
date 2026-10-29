@@ -288,6 +288,75 @@ public class MapEditingServiceTests
     }
 
     [Fact]
+    public void RaiseStroke_EachCellOnce_SingleUndo()
+    {
+        var svc = new MapEditingService(new TileMap(3, 1), new FakeMapRepository());
+        svc.Raise(new TileCoord(0, 0), 1); // outside a stroke: ignored
+        svc.BeginStroke();
+        svc.Raise(new TileCoord(0, 0), 1);
+        svc.Raise(new TileCoord(1, 0), 1);
+        svc.Raise(new TileCoord(0, 0), 1); // dragged back over: still one step
+        svc.Raise(new TileCoord(9, 0), 1);
+        Assert.True(svc.IsDirty);
+        svc.EndStroke();
+
+        Assert.Equal([1, 1, 0], svc.Map.Heights.ToArray());
+        Assert.True(svc.Undo());
+        Assert.Equal([0, 0, 0], svc.Map.Heights.ToArray());
+        Assert.False(svc.CanUndo);
+        Assert.True(svc.Redo());
+        Assert.Equal([1, 1, 0], svc.Map.Heights.ToArray());
+    }
+
+    [Fact]
+    public void Stroke_PaintAndRaise_SingleUndo()
+    {
+        var svc = new MapEditingService(new TileMap(2, 1), new FakeMapRepository());
+        svc.BeginStroke();
+        svc.Raise(new TileCoord(0, 0), 1);
+        svc.Paint(new TileCoord(1, 0), 3); // tool switched mid-drag
+        svc.EndStroke();
+
+        Assert.True(svc.Undo());
+        Assert.Equal([0, 0], svc.Map.Heights.ToArray());
+        Assert.Equal([0, 0], svc.Map.Tiles.ToArray());
+        Assert.False(svc.CanUndo);
+    }
+
+    [Fact]
+    public void Raise_ClampedNoChange_IsNotAnEdit()
+    {
+        var svc = new MapEditingService(new TileMap(1, 1), new FakeMapRepository());
+        svc.BeginStroke();
+        svc.Raise(new TileCoord(0, 0), -1);
+        svc.EndStroke();
+        Assert.False(svc.CanUndo);
+        Assert.False(svc.IsDirty);
+    }
+
+    [Theory]
+    [InlineData(3, int.MaxValue, 8)]
+    [InlineData(3, int.MinValue, 0)]
+    public void Raise_HugeDelta_ClampsWithoutOverflow(int start, int delta, int expected)
+    {
+        var svc = new MapEditingService(new TileMap(1, 1, [0], heights: [start]), new FakeMapRepository());
+        svc.BeginStroke();
+        svc.Raise(new TileCoord(0, 0), delta);
+        svc.EndStroke();
+        Assert.Equal(expected, svc.Map.GetHeight(new TileCoord(0, 0)));
+    }
+
+    [Fact]
+    public void Resize_KeepsHeights()
+    {
+        var svc = new MapEditingService(new TileMap(2, 2, new int[4], heights: [1, 2, 3, 4]), new FakeMapRepository());
+        svc.Resize(3, 1);
+        Assert.Equal([1, 2, 0], svc.Map.Heights.ToArray());
+        svc.Undo();
+        Assert.Equal([1, 2, 3, 4], svc.Map.Heights.ToArray());
+    }
+
+    [Fact]
     public void Resize_KeepsSolid_NewResetsToDefault()
     {
         var svc = new MapEditingService(new TileMap(4, 4, new int[16], solid: [3], solidSprites: ["bush"], shadowlessSprites: ["rock"]), new FakeMapRepository());

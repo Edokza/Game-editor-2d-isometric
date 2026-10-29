@@ -63,6 +63,8 @@ public sealed class JsonMapRepositoryTests : IDisposable
 
     [Theory]
     [InlineData("{ not json")]
+    [InlineData("""{"Width":2,"Height":1,"Tiles":[0,0],"Heights":[1]}""")]  // heights size mismatch
+    [InlineData("""{"Width":1,"Height":1,"Tiles":[0],"Heights":[9]}""")]    // above MaxHeight
     [InlineData("""{"Width":3,"Height":2,"Tiles":[1,2]}""")] // size mismatch
     [InlineData("""{"Width":3,"Height":2}""")]               // missing tiles
     [InlineData("""{"Width":3,"Height":2,"Tiles":null}""")]
@@ -108,6 +110,16 @@ public sealed class JsonMapRepositoryTests : IDisposable
 
         Assert.Equal(2, map.Get(new TileCoord(0, 0)));
         Assert.Empty(map.Objects);
+        Assert.Equal([0], map.Heights.ToArray());
+    }
+
+    [Fact]
+    public void Heights_RoundTrip()
+    {
+        var repo = new JsonMapRepository(Folder);
+        repo.Save(new TileMap(3, 1, [0, 0, 0], heights: [0, 2, 8]), "a");
+
+        Assert.Equal([0, 2, 8], repo.Load("a").Heights.ToArray());
     }
 
     [Theory]

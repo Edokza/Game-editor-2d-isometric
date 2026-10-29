@@ -221,4 +221,61 @@ public class PlaySessionTests
         play.Move(new(1, 1), 1 / 60f, view); // S keeps the left side
         Assert.Equal("hero_sw", play.Hero.Sprite);
     }
+
+    // hero at (0.5, 0.5) in a 3×1 row, walking +x one tile = 0.25 s at Speed 4
+    private static PlaySession Row(params int[] heights) =>
+        new(new TileMap(3, 1, new int[3], [new MapObject(1, "s", 0.5f, 0.5f, PlaySession.SpawnSprite)], heights: heights));
+
+    private static void Walk(PlaySession p, float seconds)
+    {
+        for (float t = 0; t < seconds; t += 0.05f) p.Move(new(1, 0), 0.05f);
+    }
+
+    [Theory]
+    [InlineData(1, true)]
+    [InlineData(2, false)]
+    public void StepUp_OneAllowed_TwoBlocked(int up, bool passes)
+    {
+        var p = Row(0, up, up);
+        Walk(p, 0.5f);
+        Assert.Equal(passes, p.Hero.X >= 1);
+    }
+
+    [Fact]
+    public void StepDown_TwoBlocked()
+    {
+        var p = Row(2, 0, 0);
+        Assert.Equal(2, p.HeroZ); // starts at the spawn tile height
+        Walk(p, 0.5f);
+        Assert.True(p.Hero.X < 1);
+    }
+
+    [Fact]
+    public void HeroZ_EasesToTileHeight_NoOvershoot()
+    {
+        var p = Row(0, 1, 1);
+        while (p.Hero.X < 1) p.Move(new(1, 0), 1 / 60f);
+        Assert.InRange(p.HeroZ, 0.01f, 0.99f); // the frame it enters the step: eased, not snapped
+        float last = p.HeroZ;
+        for (int i = 0; i < 60; i++)
+        {
+            p.Move(default, 1 / 60f);
+            Assert.InRange(p.HeroZ, last, 1); // rises monotonically, never past the step
+            last = p.HeroZ;
+        }
+        Assert.Equal(1, p.HeroZ);
+    }
+
+    [Theory]
+    [InlineData(0f)]
+    [InlineData(float.NaN)]
+    [InlineData(float.PositiveInfinity)]
+    [InlineData(1e30f)]
+    public void HeroZ_WeirdDt_StaysFinite(float dt)
+    {
+        var p = Row(0, 1, 1);
+        p.Move(new(1, 0), dt);
+        Assert.True(float.IsFinite(p.HeroZ));
+        Assert.InRange(p.HeroZ, 0, 1);
+    }
 }

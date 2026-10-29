@@ -151,4 +151,47 @@ public class IsoViewTests
         var nearest = Cells().MaxBy(c => view.Depth(c.X + 0.5f, c.Y + 0.5f));
         Assert.Equal(new TileCoord(x, y), nearest);
     }
+
+    // center of a data cell's diamond as drawn at height z
+    private static Vector2 Center(IsoView view, TileCoord c, float z = 0) =>
+        view.TileToScreen(c) + new Vector2(0, IsoMath.TileHeight / 2f) + IsoMath.Lift(z);
+
+    [Theory]
+    [MemberData(nameof(Rotations))]
+    public void PickWithHeights_FlatMap_SameAsPlain(int r)
+    {
+        var view = new IsoView(r, W, H);
+        var map = new TileMap(W, H);
+        foreach (var c in Cells()) Assert.Equal(c, view.ScreenToTile(Center(view, c), map));
+        Assert.Equal(view.ScreenToTile(new Vector2(-9999, 0)), view.ScreenToTile(new Vector2(-9999, 0), map)); // outside: plain
+        Assert.Equal(new TileCoord(int.MinValue, int.MinValue), view.ScreenToTile(new Vector2(float.NaN, 0), map));
+    }
+
+    [Theory]
+    [MemberData(nameof(Rotations))]
+    public void PickWithHeights_RaisedTopWinsOverCellBehind(int r)
+    {
+        var view = new IsoView(r, W, H);
+        var map = new TileMap(W, H);
+        var c = view.FromView(new TileCoord(2, 1)); // has a cell behind it in every rotation
+        map.SetHeight(c, 2);
+        var behind = view.FromView(new TileCoord(1, 0));
+        var p = Center(view, c, 2); // two steps up = the center of the cell behind on the ground
+        Assert.Equal(behind, view.ScreenToTile(p));
+        Assert.Equal(c, view.ScreenToTile(p, map));
+        Assert.Equal(c, view.ScreenToTile(Center(view, c, 1), map)); // its front wall face
+    }
+
+    [Theory]
+    [MemberData(nameof(Rotations))]
+    public void CellDepth_IsTheCellsDiagonal_EdgesIncluded(int r)
+    {
+        var view = new IsoView(r, W, H);
+        foreach (var c in Cells())
+        {
+            var v = view.ToView(c);
+            Assert.Equal(v.X + v.Y, view.CellDepth(c.X, c.Y));
+            Assert.Equal(v.X + v.Y, view.CellDepth(c.X + 0.99f, c.Y + 0.5f));
+        }
+    }
 }

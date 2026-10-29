@@ -3,6 +3,7 @@ namespace GameEditor.Domain;
 public sealed class TileMap
 {
     private readonly int[] _tiles;
+    private readonly int[] _heights;
     private readonly List<MapObject> _objects = [];
     private readonly HashSet<int> _solid;
     private readonly HashSet<string> _solidSprites;
@@ -17,6 +18,9 @@ public sealed class TileMap
     /// <summary>assets/objects sprites drawn without a ground shadow (a box sits flush on its tile). Used when a map doesn't list its own.</summary>
     public static readonly IReadOnlyList<string> DefaultShadowlessSprites = ["crate"];
 
+    /// <summary>Highest step a tile can be raised to.</summary>
+    public const int MaxHeight = 8;
+
     public int Width { get; }
     public int Height { get; }
 
@@ -25,8 +29,9 @@ public sealed class TileMap
     /// <param name="solid">Tile ids the hero can't enter; null → <see cref="DefaultSolid"/>. Copied.</param>
     /// <param name="solidSprites">Object sprites the hero can't walk into; null → <see cref="DefaultSolidSprites"/>. Copied.</param>
     /// <param name="shadowlessSprites">Object sprites drawn without a shadow; null → <see cref="DefaultShadowlessSprites"/>. Copied.</param>
+    /// <param name="heights">Steps per tile, same layout as <paramref name="tiles"/>, each 0–<see cref="MaxHeight"/>; null → all 0. Copied.</param>
     public TileMap(int width, int height, int[] tiles, IEnumerable<MapObject>? objects = null, IEnumerable<int>? solid = null,
-        IEnumerable<string>? solidSprites = null, IEnumerable<string>? shadowlessSprites = null)
+        IEnumerable<string>? solidSprites = null, IEnumerable<string>? shadowlessSprites = null, int[]? heights = null)
     {
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(width);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(height);
@@ -36,6 +41,11 @@ public sealed class TileMap
         Width = width;
         Height = height;
         _tiles = [.. tiles];
+        if (heights is not null && heights.Length != tiles.Length)
+            throw new ArgumentException($"Expected {count} heights, got {heights.Length}.", nameof(heights));
+        if (heights?.Any(h => (uint)h > MaxHeight) == true)
+            throw new ArgumentException($"Heights must be 0–{MaxHeight}.", nameof(heights));
+        _heights = heights is null ? new int[tiles.Length] : [.. heights];
         _solid = [.. solid ?? DefaultSolid];
         _solidSprites = [.. solidSprites ?? DefaultSolidSprites];
         _shadowlessSprites = [.. shadowlessSprites ?? DefaultShadowlessSprites];
@@ -59,6 +69,17 @@ public sealed class TileMap
     internal void Set(TileCoord c, int tileId)
     {
         if (InBounds(c)) _tiles[c.Y * Width + c.X] = tileId;
+    }
+
+    public ReadOnlySpan<int> Heights => _heights;
+
+    /// <summary>Steps; 0 when out of bounds.</summary>
+    public int GetHeight(TileCoord c) => InBounds(c) ? _heights[c.Y * Width + c.X] : 0;
+
+    /// <summary>Clamped to 0–<see cref="MaxHeight"/>; no-op when out of bounds.</summary>
+    internal void SetHeight(TileCoord c, int height)
+    {
+        if (InBounds(c)) _heights[c.Y * Width + c.X] = Math.Clamp(height, 0, MaxHeight);
     }
 
     public IReadOnlySet<int> Solid => _solid;

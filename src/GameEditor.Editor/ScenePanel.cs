@@ -16,6 +16,7 @@ public sealed class ScenePanel(MapEditingService service, PaintTool paintTool, O
     private Vector2 _pan; // world units, relative to map center
     private Camera2D _camera = new() { Zoom = 1f };
     private float? _zoomBeforePlay; // Stop restores it, play-mode zoom doesn't stick
+    private int? _followRotation; // play: rotation the camera last followed the hero at; null/changed = snap, not slide
 
     /// <summary>Non-null = play mode: shows the session's map, editing tools off.</summary>
     public PlaySession? Play { get; set; }
@@ -65,7 +66,13 @@ public sealed class ScenePanel(MapEditingService service, PaintTool paintTool, O
         var view = new IsoView(Rotation, map.Width, map.Height); // per frame: New/Open/Resize change the size
         _camera.Offset = size / 2f;
         // play: follow the hero like the Player does; _pan stays untouched so Stop returns to it
-        _camera.Target = Play is not null ? view.TileToScreen(Play.Hero.X, Play.Hero.Y) : MapCenter(view) - _pan;
+        if (Play is null) (_camera.Target, _followRotation) = (MapCenter(view) - _pan, null);
+        else
+        {
+            var heroAt = view.TileToScreen(Play.Hero.X, Play.Hero.Y) + IsoMath.Lift(Play.HeroZ);
+            _camera.Target = _followRotation == Rotation ? Vector2.Lerp(_camera.Target, heroAt, PlaySession.Ease(8, Raylib.GetFrameTime())) : heroAt;
+            _followRotation = Rotation;
+        }
 
         // zoom toward mouse: keep the world point under the cursor fixed (play: zoom around the hero at center)
         float wheel = Raylib.GetMouseWheelMove();
@@ -94,12 +101,12 @@ public sealed class ScenePanel(MapEditingService service, PaintTool paintTool, O
         MapRenderer.DrawBackground(_rt.Texture.Width, _rt.Texture.Height);
         Raylib.BeginMode2D(_camera);
         MapRenderer.Draw(map, Vector2.Zero, view);
-        MapRenderer.DrawObjects(map, Vector2.Zero, Play is null ? objectPanels.SelectedId : null, view);
+        MapRenderer.DrawObjects(map, Vector2.Zero, Play is null ? objectPanels.SelectedId : null, view, Play is null ? null : (Play.Hero.Id, Play.HeroZ));
         // ponytail: 4 lines per tile every frame, 256x256 = 262k lines; cull to the view if big maps lag
         if (Grid && Play is null)
             for (int y = 0; y < map.Height; y++)
             for (int x = 0; x < map.Width; x++)
-                MapRenderer.DrawHighlight(new TileCoord(x, y), Vector2.Zero, GridColor, view);
+                MapRenderer.DrawHighlight(new TileCoord(x, y), Vector2.Zero, GridColor, view, map.GetHeight(new TileCoord(x, y)));
         Raylib.EndMode2D();
         if (Play is null) paintTool.Update(_camera, mouse, hovered, view);
         Raylib.EndTextureMode();

@@ -22,6 +22,8 @@ public static class AssetsPanel
         if (ImGui.RadioButton("Fill (G)", tool.Mode == PaintMode.Fill)) tool.Mode = PaintMode.Fill;
         ImGui.SameLine();
         if (ImGui.RadioButton("Rect (R)", tool.Mode == PaintMode.Rect)) tool.Mode = PaintMode.Rect;
+        if (ImGui.RadioButton("Height (H)", tool.Mode == PaintMode.Height)) tool.Mode = PaintMode.Height;
+        if (ImGui.IsItemHovered()) ImGui.SetTooltip("Click/drag: raise one step, Shift: lower");
         if (ImGui.BeginTabBar("assets"))
         {
             if (ImGui.BeginTabItem("Tiles"))

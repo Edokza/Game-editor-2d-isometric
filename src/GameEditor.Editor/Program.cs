@@ -22,7 +22,7 @@ RaylibLog.Install();
 Raylib.SetConfigFlags(ConfigFlags.ResizableWindow | ConfigFlags.VSyncHint);
 var version = typeof(Program).Assembly.GetName().Version!.ToString(3);
 (string? Name, bool Dirty)? titled = null; // what the title shows: rebuilt only on change, not per frame
-(TileCoord Tile, int Id)? hovered = null; // same for the menu bar's hover text
+(TileCoord Tile, int Id, int Height)? hovered = null; // same for the menu bar's hover text
 var hoverText = "";
 Raylib.InitWindow(1280, 720, $"Game Editor v{version}");
 Raylib.SetExitKey(KeyboardKey.Null); // Esc must not quit the editor
@@ -70,6 +70,7 @@ while (!quit)
         else if (Raylib.IsKeyPressed(KeyboardKey.B)) paintTool.Mode = PaintMode.Brush;
         else if (Raylib.IsKeyPressed(KeyboardKey.G)) paintTool.Mode = PaintMode.Fill;
         else if (Raylib.IsKeyPressed(KeyboardKey.R)) paintTool.Mode = PaintMode.Rect;
+        else if (Raylib.IsKeyPressed(KeyboardKey.H)) paintTool.Mode = PaintMode.Height;
         else if (Raylib.IsKeyPressed(KeyboardKey.Delete) && objectPanels.SelectedId is { } id) service.RemoveObject(id);
     }
     // first frame: build only when there's no saved layout, so the user's own arrangement is kept
@@ -86,11 +87,11 @@ while (!quit)
         // Hover is last frame's: InBounds guards a resize/load since then; play: Update doesn't run, so it's stale
         if (play is null && paintTool.Hover is { } h && service.Map.InBounds(h))
         {
-            int id = service.Map.Get(h);
-            if (hovered != (h, id))
+            int id = service.Map.Get(h), height = service.Map.GetHeight(h);
+            if (hovered != (h, id, height))
             {
-                hovered = (h, id);
-                hoverText = $"({h.X}, {h.Y}) id {id}";
+                hovered = (h, id, height);
+                hoverText = $"({h.X}, {h.Y}) id {id} h {height}";
             }
             ImGui.SetCursorPosX(ImGui.GetWindowWidth() - ImGui.CalcTextSize(hoverText).X - ImGui.GetStyle().ItemSpacing.X);
             ImGui.TextDisabled(hoverText);

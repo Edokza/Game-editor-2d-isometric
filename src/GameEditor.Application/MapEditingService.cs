@@ -11,6 +11,7 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
 
     private readonly UndoStack _undo = new();
     private Dictionary<TileCoord, (int Old, int New)>? _stroke;
+    private Dictionary<TileCoord, (int Old, int New)>? _heightStroke;
     private (int Index, MapObject Before, int Token)? _edit;
     private int _lastToken;
     private bool _dirty;
@@ -21,12 +22,23 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
     public bool CanUndo => _undo.CanUndo;
     public bool CanRedo => _undo.CanRedo;
     /// <summary>Edited since the last successful save/load, including an unfinished stroke or object edit.</summary>
-    public bool IsDirty => _dirty || _stroke is { Count: > 0 } || _edit is { } e && Map.Objects[e.Index] != e.Before;
+    public bool IsDirty => _dirty || _stroke is { Count: > 0 } || _heightStroke is { Count: > 0 } || _edit is { } e && Map.Objects[e.Index] != e.Before;
 
     public void BeginStroke()
     {
         Flush();
         _stroke = [];
+        _heightStroke = [];
+    }
+
+    /// <summary>Raises (or lowers, negative) a tile by <paramref name="delta"/> steps, clamped; each cell changes once per stroke,
+    /// so dragging over it again does nothing. Ignored outside a stroke or out of bounds.</summary>
+    public void Raise(TileCoord c, int delta)
+    {
+        if (_heightStroke is null || !Map.InBounds(c) || _heightStroke.ContainsKey(c)) return;
+        int old = Map.GetHeight(c);
+        Map.SetHeight(c, old + Math.Clamp(delta, -TileMap.MaxHeight, TileMap.MaxHeight)); // clamp first: old + int.MaxValue wraps
+        if (Map.GetHeight(c) != old) _heightStroke[c] = (old, Map.GetHeight(c));
     }
 
     /// <summary>Applies immediately; ignored outside a stroke or out of bounds.</summary>
@@ -42,12 +54,14 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
     /// <summary>Whole stroke becomes one undo step.</summary>
     public void EndStroke()
     {
-        if (_stroke is { Count: > 0 })
+        // paint and height together: switching tool mid-drag is still one stroke, one undo step
+        if (_stroke is { Count: > 0 } || _heightStroke is { Count: > 0 })
         {
-            _undo.Push(new PaintTilesCommand(Map, _stroke));
+            _undo.Push(new PaintTilesCommand(Map, _stroke ?? [], _heightStroke));
             _dirty = true;
         }
         _stroke = null;
+        _heightStroke = null;
     }
 
     /// <summary>4-way flood fill of the region sharing <paramref name="c"/>'s tile id; one undo step.
@@ -201,6 +215,7 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
     {
         CheckSize(width, height);
         _stroke = null;
+        _heightStroke = null;
         _edit = null;
         Map = new TileMap(width, height);
         CurrentName = null;
@@ -208,7 +223,7 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
         _dirty = false;
     }
 
-    /// <summary>Keeps the top-left corner; new cells are 0, objects past the new right/bottom edge are dropped.
+    /// <summary>Keeps the top-left corner; new cells are tile 0 at height 0, objects past the new right/bottom edge are dropped.
     /// One undo step: undo restores the previous <see cref="TileMap"/> instance.</summary>
     public void Resize(int width, int height)
     {
@@ -216,10 +231,14 @@ public sealed class MapEditingService(TileMap map, IMapRepository repository)
         if (width == Map.Width && height == Map.Height) return; // OK on an unchanged popup is not an edit
         Flush();
         var tiles = new int[width * height];
+        var heights = new int[width * height];
         for (int y = 0; y < Math.Min(height, Map.Height); y++)
             for (int x = 0; x < Math.Min(width, Map.Width); x++)
+            {
                 tiles[y * width + x] = Map.Get(new TileCoord(x, y));
-        Do(new ResizeCommand(m => Map = m, Map, new TileMap(width, height, tiles, Map.Objects.Where(o => o.X < width && o.Y < height), Map.Solid, Map.SolidSprites, Map.ShadowlessSprites)));
+                heights[y * width + x] = Map.GetHeight(new TileCoord(x, y));
+            }
+        Do(new ResizeCommand(m => Map = m, Map, new TileMap(width, height, tiles, Map.Objects.Where(o => o.X < width && o.Y < height), Map.Solid, Map.SolidSprites, Map.ShadowlessSprites, heights)));
     }
 
     public Result Load(string name)

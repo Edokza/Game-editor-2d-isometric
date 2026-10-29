@@ -7,8 +7,13 @@ public static class IsoMath
 {
     public const int TileWidth = 128;
     public const int TileHeight = 64;
+    /// <summary>Screen pixels per <see cref="TileMap"/> height step; also the map edge wall.</summary>
+    public const int StepHeight = TileHeight / 2;
     private const float HalfW = TileWidth / 2f;
     private const float HalfH = TileHeight / 2f;
+
+    /// <summary>Screen offset of something <paramref name="steps"/> high: up = −y.</summary>
+    public static Vector2 Lift(float steps) => new(0, -steps * StepHeight);
 
     public static Vector2 TileToScreen(TileCoord c) => new((c.X - c.Y) * HalfW, (c.X + c.Y) * HalfH);
 

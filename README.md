@@ -7,6 +7,7 @@ A small isometric tile map editor built with .NET 10, Raylib and Dear ImGui. Pai
 - Isometric 64×32 tiles: click/drag to paint, one stroke = one undo step
 - Bucket fill: flood-fill connected tiles of the same id (4-way), one undo step
 - Rectangle tool: drag a box, release to fill every tile in it, one undo step
+- Height tool: click/drag raises each tile one step (Shift lowers), 0–8 steps, one undo step per stroke; raised tiles get walls and objects stand on top
 - Eyedropper: right-click a tile in the Scene to pick it as the paint tile
 - Map size: New asks for width × height, Edit → Resize Map changes it (1–256 each). Resize drops objects outside the new size and can be undone
 - Solid tiles per map: right-click a tile in Assets to toggle Solid (red corner mark), saved in the map file
@@ -19,7 +20,8 @@ A small isometric tile map editor built with .NET 10, Raylib and Dear ImGui. Pai
 - Assets panel built from PNG sprites (tiles, objects, characters)
 - Undo/redo for every edit
 - Multiple maps: New / Open / Save / Save As, with an unsaved-changes prompt
-- Play mode: walk a hero around the map, blocked by solid tiles and objects, facing the way it walks; the camera follows the hero
+- Play mode: walk a hero around the map, blocked by solid tiles and objects, facing the way it walks; the camera follows the hero smoothly
+- Elevation: the hero climbs or drops one step at a time and eases up/down instead of jumping; a difference of two or more steps is a wall
 - File → Export Game: a playable folder (exe + map) that runs without .NET or the editor
 
 ## Requirements
@@ -41,7 +43,8 @@ dotnet run --project src/GameEditor.Editor
 | Input | Action |
 |---|---|
 | Left click / drag | Paint the selected tile, or drag an object |
-| B / G / R | Brush / Fill / Rectangle tool |
+| B / G / R / H | Brush / Fill / Rectangle / Height tool |
+| Shift + click (Height tool) | Lower the tile one step |
 | Right click (Scene) | Pick the tile under the cursor |
 | Right click (Assets tile or object) | Toggle Solid |
 | Middle drag | Pan (not in Play mode) |
@@ -87,11 +90,12 @@ The editor saves to `Documents/GameEditor/maps/<name>.json`:
     { "Id": 2, "Name": "spawn", "X": 10.5, "Y": 10.5, "Sprite": "spawn" }
   ],
   "Solid": [1, 6, 7],
-  "SolidSprites": ["crate", "rock", "tree"]
+  "SolidSprites": ["crate", "rock", "tree"],
+  "Heights": [0, 0, 2, ...]
 }
 ```
 
-`Tiles` is row-major (`y * Width + x`). `Objects`, `Sprite`, `Solid` and `SolidSprites` are optional. A missing `Solid` means the defaults `[1, 6, 7]`, a missing `SolidSprites` means `["crate", "rock", "tree"]`; `[]` means nothing is solid. A solid object blocks the tile it stands on. The first object with sprite `spawn` is the hero's start. Names may not contain `..`, `/`, `\` or other invalid file name characters.
+`Tiles` and `Heights` are row-major (`y * Width + x`). `Objects`, `Sprite`, `Solid`, `SolidSprites` and `Heights` are optional; a missing `Heights` means every tile is at ground level (each value 0–8 steps). A missing `Solid` means the defaults `[1, 6, 7]`, a missing `SolidSprites` means `["crate", "rock", "tree"]`; `[]` means nothing is solid. A solid object blocks the tile it stands on. The first object with sprite `spawn` is the hero's start. Names may not contain `..`, `/`, `\` or other invalid file name characters.
 
 ## Export
 

@@ -13,7 +13,7 @@ public sealed class JsonMapRepository(string folder) : IMapRepository
         Directory.CreateDirectory(folder);
         // write-then-rename so a crash mid-write never corrupts the existing map
         var tmp = path + ".tmp";
-        File.WriteAllBytes(tmp, JsonSerializer.SerializeToUtf8Bytes(new MapDto(map.Width, map.Height, [.. map.Tiles], [.. map.Objects], [.. map.Solid.Order()], [.. map.SolidSprites.Order(StringComparer.Ordinal)], [.. map.ShadowlessSprites.Order(StringComparer.Ordinal)]), MapJsonContext.Default.MapDto));
+        File.WriteAllBytes(tmp, JsonSerializer.SerializeToUtf8Bytes(new MapDto(map.Width, map.Height, [.. map.Tiles], [.. map.Objects], [.. map.Solid.Order()], [.. map.SolidSprites.Order(StringComparer.Ordinal)], [.. map.ShadowlessSprites.Order(StringComparer.Ordinal)], [.. map.Heights]), MapJsonContext.Default.MapDto));
         File.Move(tmp, path, overwrite: true);
     }
 
@@ -21,7 +21,7 @@ public sealed class JsonMapRepository(string folder) : IMapRepository
     {
         var dto = JsonSerializer.Deserialize(File.ReadAllBytes(PathOf(name)), MapJsonContext.Default.MapDto)
                   ?? throw new InvalidDataException("Map file is empty.");
-        return new TileMap(dto.Width, dto.Height, dto.Tiles, dto.Objects, dto.Solid, dto.SolidSprites, dto.ShadowlessSprites);
+        return new TileMap(dto.Width, dto.Height, dto.Tiles, dto.Objects, dto.Solid, dto.SolidSprites, dto.ShadowlessSprites, dto.Heights);
     }
 
     public IReadOnlyList<string> List() =>

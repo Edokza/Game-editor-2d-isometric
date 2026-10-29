@@ -41,6 +41,36 @@ public class TileMapTests
     }
 
     [Fact]
+    public void Heights_DefaultZero_SetClampsAndIgnoresOutOfBounds()
+    {
+        var map = new TileMap(2, 2);
+        Assert.Equal([0, 0, 0, 0], map.Heights.ToArray());
+        map.SetHeight(new TileCoord(1, 0), 3);
+        map.SetHeight(new TileCoord(0, 1), 99);
+        map.SetHeight(new TileCoord(1, 1), -5);
+        map.SetHeight(new TileCoord(5, 5), 2);
+        Assert.Equal([0, 3, TileMap.MaxHeight, 0], map.Heights.ToArray());
+        Assert.Equal(0, map.GetHeight(new TileCoord(-1, 0)));
+    }
+
+    [Fact]
+    public void Heights_GivenAreCopied()
+    {
+        int[] given = [1, 2];
+        var map = new TileMap(2, 1, [0, 0], heights: given);
+        map.SetHeight(new TileCoord(0, 0), 5);
+        Assert.Equal(2, map.GetHeight(new TileCoord(1, 0)));
+        Assert.Equal([1, 2], given);
+    }
+
+    [Theory]
+    [InlineData(new[] { 0 })]
+    [InlineData(new[] { 0, -1 })]
+    [InlineData(new[] { 0, TileMap.MaxHeight + 1 })]
+    public void Ctor_BadHeights_Throws(int[] heights) =>
+        Assert.Throws<ArgumentException>(() => new TileMap(2, 1, [0, 0], heights: heights));
+
+    [Fact]
     public void Ctor_WrongSize_Throws() =>
         Assert.Throws<ArgumentException>(() => new TileMap(3, 2, new int[5]));
 

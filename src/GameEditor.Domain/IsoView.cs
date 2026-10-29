@@ -84,7 +84,36 @@ public readonly struct IsoView(int rotation, int width, int height)
     /// (rotating it would wrap around int).</summary>
     public TileCoord ScreenToTile(Vector2 p) => IsoMath.ScreenToTile(p) is var v && v == Invalid ? v : FromView(v);
 
+    /// <summary>Data cell drawn on top at a screen point, with tile heights: the nearest cell whose raised column (top face or
+    /// front walls) covers <paramref name="p"/>. Nothing there → plain <see cref="ScreenToTile(Vector2)"/>, which may be out of bounds.</summary>
+    public TileCoord ScreenToTile(Vector2 p, TileMap map)
+    {
+        var flat = ScreenToTile(p);
+        if (flat == Invalid) return flat;
+        TileCoord? best = null;
+        int bestDepth = int.MinValue;
+        // ponytail: samples the column every quarter step, so a few pixels at a raised diamond's side corners can pick the
+        // neighbour; solve the column/diamond intersection exactly if that ever shows
+        for (int i = 0; i <= TileMap.MaxHeight * 4; i++)
+        {
+            float z = i / 4f;
+            var c = ScreenToTile(p - IsoMath.Lift(z));
+            if (!map.InBounds(c) || map.GetHeight(c) < z) continue;
+            var v = ToView(c);
+            if (v.X + v.Y > bestDepth) (best, bestDepth) = (c, v.X + v.Y);
+        }
+        return best ?? flat;
+    }
+
     public Vector2 ScreenToTileF(Vector2 p) => FromView(IsoMath.ScreenToTileF(p));
+
+    /// <summary>Draw order key of the cell holding a tile-space point: x′ + y′ of that cell, same as the tiles of its diagonal.
+    /// Objects are drawn right after the tiles of their cell's diagonal, so a raised tile in front covers them.</summary>
+    public int CellDepth(float x, float y)
+    {
+        var v = ToView(new TileCoord((int)MathF.Floor(x), (int)MathF.Floor(y)));
+        return v.X + v.Y;
+    }
 
     /// <summary>Draw order key of a tile-space point: x′ + y′, larger = nearer the viewer = drawn later.</summary>
     public float Depth(float x, float y)

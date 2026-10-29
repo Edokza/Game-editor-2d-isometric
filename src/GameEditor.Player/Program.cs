@@ -34,6 +34,7 @@ Raylib.SetExitKey(KeyboardKey.Null); // Esc quits only when pressed twice; windo
 var camera = new Camera2D { Zoom = 1f };
 double quitUntil = 0;
 int rotation = 0; // view only: every run starts unrotated
+int? followRotation = null; // rotation the camera last followed at; a change snaps instead of sliding across the map
 
 while (!Raylib.WindowShouldClose())
 {
@@ -53,10 +54,12 @@ while (!Raylib.WindowShouldClose())
         var view = new IsoView(rotation, play.Map.Width, play.Map.Height);
         play.Move(GameInput.Walk(), Raylib.GetFrameTime(), view);
         camera.Offset = new Vector2(Raylib.GetScreenWidth(), Raylib.GetScreenHeight()) / 2f;
-        camera.Target = view.TileToScreen(play.Hero.X, play.Hero.Y);
+        var heroAt = view.TileToScreen(play.Hero.X, play.Hero.Y) + IsoMath.Lift(play.HeroZ);
+        camera.Target = followRotation == rotation ? Vector2.Lerp(camera.Target, heroAt, PlaySession.Ease(8, Raylib.GetFrameTime())) : heroAt;
+        followRotation = rotation;
         Raylib.BeginMode2D(camera);
         MapRenderer.Draw(play.Map, Vector2.Zero, view);
-        MapRenderer.DrawObjects(play.Map, Vector2.Zero, null, view);
+        MapRenderer.DrawObjects(play.Map, Vector2.Zero, null, view, (play.Hero.Id, play.HeroZ));
         Raylib.EndMode2D();
     }
     if (Raylib.GetTime() < quitUntil) Raylib.DrawText("Press Esc again to quit", 20, Raylib.GetScreenHeight() - 40, 20, Color.RayWhite);
