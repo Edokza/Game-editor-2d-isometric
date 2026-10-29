@@ -78,7 +78,7 @@ assets/
 
 ## Map files
 
-The editor saves to `Documents/GameEditor/maps/<name>.json`:
+The editor saves to `Documents/GameEditor/maps/<name>.json` (on startup it also puts the sample `Map_default_1` there if that file doesn't exist yet, so File → Open lists it):
 
 ```json
 {

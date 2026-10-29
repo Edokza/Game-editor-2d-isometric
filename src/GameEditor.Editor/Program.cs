@@ -10,7 +10,20 @@ using rlImGui_cs;
 const int MapSize = 20;
 const uint DockId = 0x6D61696E; // fixed, not 0: DockLayout must know the id before DockSpaceOverViewport makes it
 var docs = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "GameEditor");
-var service = new MapEditingService(new TileMap(MapSize, MapSize), new JsonMapRepository(Path.Combine(docs, "maps")));
+var maps = Path.Combine(docs, "maps");
+// sample map for File → Open: only when missing, so the user's own edits of it are never overwritten
+try
+{
+    var sample = Path.Combine(AppContext.BaseDirectory, "sample_maps", "Map_default_1.json");
+    var target = Path.Combine(maps, "Map_default_1.json");
+    if (File.Exists(sample) && !File.Exists(target))
+    {
+        Directory.CreateDirectory(maps);
+        File.Copy(sample, target);
+    }
+}
+catch (Exception e) when (e is IOException or UnauthorizedAccessException) { } // read-only Documents: editor works without the sample
+var service = new MapEditingService(new TileMap(MapSize, MapSize), new JsonMapRepository(maps));
 var fileMenu = new FileMenu(service, docs);
 var objectPanels = new ObjectPanels(service);
 var paintTool = new PaintTool(service, objectPanels);

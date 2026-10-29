@@ -13,6 +13,8 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\assets\**" LinkBase="assets" CopyToOutputDirectory="PreserveNewest" />
+    <!-- sample map, copied into Documents/GameEditor/maps on startup when not there yet (Program.cs) -->
+    <None Include="..\GameEditor.Player\maps\Map_default_1.json" Link="sample_maps\Map_default_1.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <!-- Export copies this exe (phase 21). Republished only when the Player, its references or assets change.
        Own obj/bin (bundle\): a solution build compiles the same projects at the same time. -->
