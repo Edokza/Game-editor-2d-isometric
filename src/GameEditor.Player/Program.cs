@@ -31,10 +31,10 @@ Raylib.SetConfigFlags(ConfigFlags.ResizableWindow | ConfigFlags.VSyncHint);
 Raylib.InitWindow(1280, 720, name ?? "Game");
 Sprites.Load(Path.Combine(AppContext.BaseDirectory, "assets"));
 Raylib.SetExitKey(KeyboardKey.Null); // Esc quits only when pressed twice; window X still closes at once
-var camera = new Camera2D { Zoom = 1f };
+var renderer = new Renderer3D();
+var cam = new OrbitCamera { Distance = 14 };
 double quitUntil = 0;
-int rotation = 0; // view only: every run starts unrotated
-int? followRotation = null; // rotation the camera last followed at; a change snaps instead of sliding across the map
+bool snap = true; // first frame: start on the hero instead of sliding in from the origin
 
 while (!Raylib.WindowShouldClose())
 {
@@ -49,22 +49,26 @@ while (!Raylib.WindowShouldClose())
     if (play is null) Raylib.DrawText(error, 20, 20, 20, Color.RayWhite);
     else
     {
-        if (Raylib.IsKeyPressed(KeyboardKey.Q)) rotation = (rotation + 3) % 4;
-        if (Raylib.IsKeyPressed(KeyboardKey.E)) rotation = (rotation + 1) % 4;
-        var view = new IsoView(rotation, play.Map.Width, play.Map.Height);
-        play.Move(GameInput.Walk(), Raylib.GetFrameTime(), view);
-        camera.Offset = new Vector2(Raylib.GetScreenWidth(), Raylib.GetScreenHeight()) / 2f;
-        var heroAt = view.TileToScreen(play.Hero.X, play.Hero.Y) + IsoMath.Lift(play.HeroZ);
-        camera.Target = followRotation == rotation ? Vector2.Lerp(camera.Target, heroAt, PlaySession.Ease(8, Raylib.GetFrameTime())) : heroAt;
-        followRotation = rotation;
-        Raylib.BeginMode2D(camera);
-        MapRenderer.Draw(play.Map, Vector2.Zero, view);
-        MapRenderer.DrawObjects(play.Map, Vector2.Zero, null, view, (play.Hero.Id, play.HeroZ));
-        Raylib.EndMode2D();
+        float dt = Raylib.GetFrameTime();
+        if (Raylib.IsKeyPressed(KeyboardKey.Q)) cam.Rotate(-1);
+        if (Raylib.IsKeyPressed(KeyboardKey.E)) cam.Rotate(1);
+        if (Raylib.GetMouseWheelMove() is var wheel and not 0 && float.IsFinite(wheel)) cam.Zoom(wheel);
+        cam.Update(dt);
+        play.Move(GameInput.Walk(), dt, cam.Yaw);
+        var heroAt = World3D.At(play.Hero.X, play.Hero.Y, play.HeroZ);
+        cam.Target = snap ? heroAt : Vector3.Lerp(cam.Target, heroAt, PlaySession.Ease(8, dt));
+        snap = false;
+        cam.ApplyClipPlanes();
+        var camera = cam.Camera;
+        Raylib.BeginMode3D(camera);
+        renderer.DrawTerrain(play.Map, false);
+        renderer.DrawObjects(play.Map, camera, null, (play.Hero.Id, play.HeroZ));
+        Raylib.EndMode3D();
     }
     if (Raylib.GetTime() < quitUntil) Raylib.DrawText("Press Esc again to quit", 20, Raylib.GetScreenHeight() - 40, 20, Color.RayWhite);
     Raylib.EndDrawing();
 }
 
+renderer.Dispose();
 Sprites.Unload();
 Raylib.CloseWindow();

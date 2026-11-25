@@ -34,14 +34,14 @@ public static class AssetsPanel
                 {
                     var tex = Sprites.Tile(i);
                     if (tex.Id == 0 && i >= MapRenderer.Palette.Length) continue; // id gap in tiles/: nothing to show
-                    Wrap(ref any, IsoMath.TileWidth / 2f); // half size: 128px tiles would crowd the panel
+                    Wrap(ref any, 64); // half size: 128px tiles would crowd the panel
                     ImGui.PushID(i); // constant labels: no per-frame string allocation
                     bool clicked;
                     if (tex.Id != 0) clicked = rlImGui.ImageButtonSize("##t", tex, new(tex.Width / 2f, tex.Height / 2f));
                     else
                     {
                         var c = MapRenderer.Palette[i];
-                        clicked = ImGui.ColorButton("##t", new Vector4(c.R, c.G, c.B, c.A) / 255f, ImGuiColorEditFlags.NoTooltip, new(IsoMath.TileWidth / 2f, IsoMath.TileHeight / 2f));
+                        clicked = ImGui.ColorButton("##t", new Vector4(c.R, c.G, c.B, c.A) / 255f, ImGuiColorEditFlags.NoTooltip, new(64, 32));
                     }
                     var min = ImGui.GetItemRectMin();
                     var max = ImGui.GetItemRectMax();

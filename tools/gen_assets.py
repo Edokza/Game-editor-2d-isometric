@@ -124,10 +124,10 @@ def pat_wood(q, pts, s, c, a):  # planks along the top-right edge
 
 PAT = {"grass": pat_grass, "water": pat_water, "sand": pat_sand, "stone": pat_stone, "dirt": pat_dirt, "snow": pat_snow, "wood": pat_wood}
 
-def top(p, w, mat, s):
-    """Diamond face: dithered base, then the material pattern (kept off the 1px rim so stamps never get cut at the tile edge).
+def top(p, w, mat, s, m=None):
+    """Diamond face (or mask m): dithered base, then the material pattern (kept off the 1px rim so stamps never get cut at the tile edge).
     No lit/dark rim: neighbouring tiles of one kind would show a grid seam."""
-    m, c = diamond(w), P[mat]
+    m, c = m or diamond(w), P[mat]
     inner = []
     for x, y in sorted(m):
         r = rnd(x, y, s)
@@ -178,6 +178,11 @@ mats = ["grass", "water", "sand", "stone", "dirt", "snow"]
 tiles = {f"{i}_{k}": tile(k, i + 1) for i, k in enumerate(mats)}
 tiles["6_dirt_block"] = block(128, 32, "grass", "dirt", 9, dirt_wall)
 tiles["7_stone_block"] = block(128, 32, "stone", "stone", 10, brick_wall)
+
+def square(mat, s):  # top face of a 3D tile box, same look as the diamond
+    im, p = spr(64, 64); top(p, 64, mat, s, {(x, y) for x in range(64) for y in range(64)}); return im
+tops = {f"{i}_{k}": square(k, i + 1) for i, k in enumerate(mats)}
+tops["6_dirt_block"], tops["7_stone_block"] = square("grass", 9), square("stone", 10)
 
 def ball(p, cx, cy, r, c, s, rim=True):
     """Lit-from-top-left shaded disc with leafy dither; dark rim bottom-right separates stacked clumps."""
@@ -273,10 +278,11 @@ def tone(im, sat=.6, contrast=.75, bright=1.15):
     rgb.putalpha(im.getchannel("A"))
     return rgb
 tiles = {n: tone(im) for n, im in tiles.items()}
+tops = {n: tone(im) for n, im in tops.items()}
 
 for n, im in tiles.items():
     assert im.width == 128 and len(im.getcolors(1 << 16)) >= 8, n  # 128x64 grid, 16-bit look: >= 8 colors
-for folder, d in (("tiles", tiles), ("objects", objects), ("characters", chars)):
+for folder, d in (("tiles", tiles), ("tiles_top", tops), ("objects", objects), ("characters", chars)):
     os.makedirs(f"{OUT}/{folder}", exist_ok=True)
     for n, im in d.items(): im.save(f"{OUT}/{folder}/{n}.png")
 print("ok", os.path.normpath(OUT))

@@ -81,6 +81,7 @@ public sealed class FileMenu(MapEditingService service, string docs)
             if (ImGui.MenuItem("Grid", "", scene.Grid)) scene.Grid = !scene.Grid; // no shortcut: G is Fill
             if (ImGui.MenuItem("Rotate Left", "Q")) scene.Rotate(-1);
             if (ImGui.MenuItem("Rotate Right", "E")) scene.Rotate(1);
+            if (ImGui.MenuItem("Orthographic", "", scene.Ortho)) scene.Ortho = !scene.Ortho;
             ImGui.TextDisabled($"View angle {scene.Rotation * 90}°");
             if (ImGui.MenuItem("Reset Layout")) ResetLayout = true;
             ImGui.EndMenu();

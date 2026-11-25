@@ -5,8 +5,8 @@ namespace GameEditor.Rendering;
 
 public static class GameInput
 {
-    /// <summary>View tile-space direction from WASD/arrows; W = up the screen = toward smaller x′ and y′.
-    /// Pass PlaySession.Move the same view, so walking stays screen-relative after a rotation.</summary>
+    /// <summary>Screen-relative direction from WASD/arrows; W = up the screen = (−1, −1) at yaw 0.
+    /// Pass PlaySession.Move the camera yaw, so walking stays screen-relative however the view is turned.</summary>
     public static Vector2 Walk()
     {
         static bool Down(KeyboardKey a, KeyboardKey b) => Raylib.IsKeyDown(a) || Raylib.IsKeyDown(b);

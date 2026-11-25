@@ -13,5 +13,6 @@
     <ProjectReference Include="..\..\src\GameEditor.Domain\GameEditor.Domain.csproj" />
     <ProjectReference Include="..\..\src\GameEditor.Application\GameEditor.Application.csproj" />
     <ProjectReference Include="..\..\src\GameEditor.Infrastructure\GameEditor.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\GameEditor.Rendering\GameEditor.Rendering.csproj" />
   </ItemGroup>
 </Project>

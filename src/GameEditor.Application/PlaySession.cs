@@ -36,13 +36,13 @@ public sealed class PlaySession
         HeroZ = Map.GetHeight(Tile(x, y));
     }
 
-    /// <summary><paramref name="dir"/> in <paramref name="view"/> tile space (so WASD stays screen-relative after a rotation), any length;
-    /// default view = map tile space. One axis at a time so a blocked axis still lets the hero slide along the wall.
+    /// <summary><paramref name="dir"/> screen-relative at camera <paramref name="yaw"/> degrees (<see cref="World3D.DirFromScreen"/>, so WASD
+    /// follows the screen however the view is turned), any length; yaw 0 = map tile space. One axis at a time so a blocked axis still lets the hero slide along the wall.
     /// Call every frame, also with a zero <paramref name="dir"/>: it eases <see cref="HeroZ"/>.</summary>
-    public void Move(Vector2 dir, float dt, IsoView view = default)
+    public void Move(Vector2 dir, float dt, float yaw = 0)
     {
         dt = float.IsFinite(dt) ? Math.Clamp(dt, 0, MaxDt) : 0;
-        Walk(dir, dt, view);
+        Walk(dir, dt, yaw);
         float target = Map.GetHeight(Tile(Hero.X, Hero.Y));
         HeroZ += (target - HeroZ) * Ease(ClimbRate, dt); // snap the tail so it really lands
         if (MathF.Abs(target - HeroZ) < 0.01f) HeroZ = target;
@@ -52,9 +52,9 @@ public sealed class PlaySession
     /// so the speed is the same at any fps and it never overshoots.</summary>
     public static float Ease(float rate, float dt) => 1 - MathF.Exp(-rate * MathF.Max(dt, 0));
 
-    private void Walk(Vector2 dir, float dt, IsoView view)
+    private void Walk(Vector2 dir, float dt, float yaw)
     {
-        var step = Vector2.Normalize(view.DirFromView(dir)) * Speed * dt;
+        var step = Vector2.Normalize(World3D.DirFromScreen(dir, yaw)) * Speed * dt;
         if (!float.IsFinite(step.X) || !float.IsFinite(step.Y)) return; // zero dir normalizes to NaN
         var h = Hero;
         float x = Blocked(h.X, h.Y, h.X + step.X, h.Y) ? h.X : h.X + step.X;

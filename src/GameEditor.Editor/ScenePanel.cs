@@ -11,12 +11,12 @@ namespace GameEditor.Editor;
 /// <summary>Renders the map into a RenderTexture shown in the "Scene" panel. Call between rlImGui.Begin/End.</summary>
 public sealed class ScenePanel(MapEditingService service, PaintTool paintTool, ObjectPanels objectPanels) : IDisposable
 {
-    private static readonly Color GridColor = new(255, 255, 255, 90);
     private RenderTexture2D _rt;
-    private Vector2 _pan; // world units, relative to map center
-    private Camera2D _camera = new() { Zoom = 1f };
-    private float? _zoomBeforePlay; // Stop restores it, play-mode zoom doesn't stick
-    private int? _followRotation; // play: rotation the camera last followed the hero at; null/changed = snap, not slide
+    private Renderer3D? _renderer; // created on first draw: needs the window and Sprites loaded
+    private readonly OrbitCamera _cam = new();
+    private Vector2 _pan; // world x/z, relative to map center: New/Open/Resize keep the view centered
+    private float? _distanceBeforePlay; // Stop restores it, play-mode zoom doesn't stick
+    private bool _following; // play: false = snap onto the hero this frame instead of sliding across the map
 
     /// <summary>Non-null = play mode: shows the session's map, editing tools off.</summary>
     public PlaySession? Play { get; set; }
@@ -24,16 +24,22 @@ public sealed class ScenePanel(MapEditingService service, PaintTool paintTool, O
     /// <summary>Outline every tile over the map; editor only.</summary>
     public bool Grid { get; set; }
 
-    /// <summary>View rotation 0–3 (90° steps, clockwise); view only, also kept in play mode.</summary>
-    public int Rotation { get; private set; }
+    /// <summary>Orthographic instead of perspective camera.</summary>
+    public bool Ortho { get => _cam.Ortho; set => _cam.Ortho = value; }
 
-    /// <summary>+1 turns the map clockwise around its own center: <c>_pan</c> is relative to the map center, so leaving it alone keeps the center in place on screen.</summary>
-    public void Rotate(int steps) => Rotation = ((Rotation + steps) % 4 + 4) % 4;
+    /// <summary>Current camera turn in degrees (eases toward 90° steps); view only, also kept in play mode.</summary>
+    public float Yaw => _cam.Yaw;
+
+    /// <summary>Settled view angle, 0–3 × 90°.</summary>
+    public int Rotation => _cam.Steps;
+
+    /// <summary>+1 turns the map clockwise around the look point.</summary>
+    public void Rotate(int steps) => _cam.Rotate(steps);
 
     public void Draw()
     {
-        if (Play is not null) _zoomBeforePlay ??= _camera.Zoom;
-        else if (_zoomBeforePlay is { } z0) (_camera.Zoom, _zoomBeforePlay) = (z0, null);
+        if (Play is not null) _distanceBeforePlay ??= _cam.Distance;
+        else if (_distanceBeforePlay is { } d0) (_cam.Distance, _distanceBeforePlay) = (d0, null);
 
         ImGui.SetNextWindowSize(new(800, 600), ImGuiCond.FirstUseEver);
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
@@ -53,74 +59,68 @@ public sealed class ScenePanel(MapEditingService service, PaintTool paintTool, O
             if (_rt.Id != 0) Raylib.UnloadRenderTexture(_rt);
             _rt = Raylib.LoadRenderTexture((int)size.X, (int)size.Y);
         }
+        _renderer ??= new Renderer3D();
 
         var origin = ImGui.GetCursorScreenPos();
         rlImGui.ImageRenderTexture(_rt); // texture is sampled at rlImGui.End, so drawing into it below still shows this frame
         bool hovered = ImGui.IsItemHovered();
         var mouse = Raylib.GetMousePosition() - origin;
-
-        if (Play is null && hovered && Raylib.IsMouseButtonDown(MouseButton.Middle))
-            _pan += Raylib.GetMouseDelta() / _camera.Zoom;
-
         var map = Play?.Map ?? service.Map;
-        var view = new IsoView(Rotation, map.Width, map.Height); // per frame: New/Open/Resize change the size
-        _camera.Offset = size / 2f;
+        float dt = Raylib.GetFrameTime();
+        _cam.Update(dt);
+
         // play: follow the hero like the Player does; _pan stays untouched so Stop returns to it
-        if (Play is null) (_camera.Target, _followRotation) = (MapCenter(view) - _pan, null);
+        if (Play is null)
+        {
+            _following = false;
+            _cam.Target = new(map.Width / 2f + _pan.X, 0, map.Height / 2f + _pan.Y);
+            if (hovered && Raylib.IsMouseButtonDown(MouseButton.Middle) && Ground(mouse - Raylib.GetMouseDelta(), size) is { } a && Ground(mouse, size) is { } b)
+                _pan -= b - a; // the ground point under the cursor stays under it
+        }
         else
         {
-            var heroAt = view.TileToScreen(Play.Hero.X, Play.Hero.Y) + IsoMath.Lift(Play.HeroZ);
-            _camera.Target = _followRotation == Rotation ? Vector2.Lerp(_camera.Target, heroAt, PlaySession.Ease(8, Raylib.GetFrameTime())) : heroAt;
-            _followRotation = Rotation;
+            var heroAt = World3D.At(Play.Hero.X, Play.Hero.Y, Play.HeroZ);
+            _cam.Target = _following ? Vector3.Lerp(_cam.Target, heroAt, PlaySession.Ease(8, dt)) : heroAt;
+            _following = true;
         }
 
-        // zoom toward mouse: keep the world point under the cursor fixed (play: zoom around the hero at center)
+        // zoom toward the mouse: keep the ground point under the cursor fixed (play: zoom around the hero at center)
         float wheel = Raylib.GetMouseWheelMove();
         if (hovered && wheel != 0 && float.IsFinite(wheel))
         {
-            var before = Raylib.GetScreenToWorld2D(mouse, _camera);
-            // ≥1: whole steps so every sprite pixel is the same size on screen; <1: smooth overview
-            // ponytail: one step per wheel event, touchpads with tiny fractional deltas zoom fast; accumulate if that bothers
-            float z = _camera.Zoom;
-            if (z > 1 || (z == 1 && wheel > 0)) z = MathF.Round(z) + MathF.Sign(wheel);
-            else
+            var before = Ground(mouse, size);
+            _cam.Zoom(wheel);
+            if (Play is null && before is { } p0 && Ground(mouse, size) is { } p1)
             {
-                z *= MathF.Pow(1.1f, wheel);
-                if (z > 0.999f) z = 1; // float drift: 9 steps down then up gives 0.9999998, must still land on exactly 1
-            }
-            _camera.Zoom = Math.Clamp(z, 0.25f, 4f);
-            if (Play is null)
-            {
-                var shift = before - Raylib.GetScreenToWorld2D(mouse, _camera);
-                _pan -= shift;
-                _camera.Target += shift;
+                _pan += p0 - p1;
+                _cam.Target += new Vector3(p0.X - p1.X, 0, p0.Y - p1.Y);
             }
         }
 
+        _cam.ApplyClipPlanes();
+        var camera = _cam.Camera;
         Raylib.BeginTextureMode(_rt);
         MapRenderer.DrawBackground(_rt.Texture.Width, _rt.Texture.Height);
-        Raylib.BeginMode2D(_camera);
-        MapRenderer.Draw(map, Vector2.Zero, view);
-        MapRenderer.DrawObjects(map, Vector2.Zero, Play is null ? objectPanels.SelectedId : null, view, Play is null ? null : (Play.Hero.Id, Play.HeroZ));
-        // ponytail: 4 lines per tile every frame, 256x256 = 262k lines; cull to the view if big maps lag
-        if (Grid && Play is null)
-            for (int y = 0; y < map.Height; y++)
-            for (int x = 0; x < map.Width; x++)
-                MapRenderer.DrawHighlight(new TileCoord(x, y), Vector2.Zero, GridColor, view, map.GetHeight(new TileCoord(x, y)));
-        Raylib.EndMode2D();
-        if (Play is null) paintTool.Update(_camera, mouse, hovered, view);
+        Raylib.BeginMode3D(camera);
+        _renderer.DrawTerrain(map, Grid && Play is null);
+        _renderer.DrawObjects(map, camera, Play is null ? objectPanels.SelectedId : null, Play is null ? null : (Play.Hero.Id, Play.HeroZ));
+        Raylib.EndMode3D();
+        if (Play is null) paintTool.Update(camera, Raylib.GetScreenToWorldRayEx(mouse, camera, (int)size.X, (int)size.Y), hovered);
         Raylib.EndTextureMode();
 
         ImGui.End();
     }
 
-    /// <summary>Center of the map's iso bounding box as drawn (view tile (0,0) top vertex = world origin).</summary>
-    private static Vector2 MapCenter(IsoView view) => new(
-        (view.ViewWidth - view.ViewHeight) * IsoMath.TileWidth / 4f,
-        (view.ViewWidth + view.ViewHeight) * IsoMath.TileHeight / 4f);
+    /// <summary>Ground plane (y = 0) point under a panel-local screen point, as data x/y.</summary>
+    private Vector2? Ground(Vector2 p, Vector2 size)
+    {
+        var ray = Raylib.GetScreenToWorldRayEx(p, _cam.Camera, (int)size.X, (int)size.Y);
+        return World3D.PlaneHit(ray.Position, ray.Direction, 0);
+    }
 
     public void Dispose()
     {
+        _renderer?.Dispose();
         if (_rt.Id != 0) Raylib.UnloadRenderTexture(_rt);
     }
 }

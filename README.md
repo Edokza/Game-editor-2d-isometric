@@ -1,10 +1,11 @@
-# Isometric Game Editor
+# 2.5D Game Editor
 
-A small isometric tile map editor built with .NET 10, Raylib and Dear ImGui. Paint maps, place objects, test them in Play mode, and export a standalone game with one click.
+A small 2.5D tile map editor built with .NET 10, Raylib and Dear ImGui: the map is real 3D (tile boxes), characters and objects are pixel-art billboards. Paint maps, place objects, test them in Play mode, and export a standalone game with one click.
 
 ## Features
 
-- Isometric 64×32 tiles: click/drag to paint, one stroke = one undo step
+- 3D view: each tile is a box as tall as its height, textured top, shaded sides; objects and the hero are upright sprites that always face the camera, with soft shadows
+- Click/drag to paint tiles (picked by a ray from the mouse, so raised tiles in front win), one stroke = one undo step
 - Bucket fill: flood-fill connected tiles of the same id (4-way), one undo step
 - Rectangle tool: drag a box, release to fill every tile in it, one undo step
 - Height tool: click/drag raises each tile one step (Shift lowers), 0–8 steps, one undo step per stroke; raised tiles get walls and objects stand on top
@@ -13,10 +14,10 @@ A small isometric tile map editor built with .NET 10, Raylib and Dear ImGui. Pai
 - Solid tiles per map: right-click a tile in Assets to toggle Solid (red corner mark), saved in the map file
 - Solid objects per map: right-click an object in Assets to toggle Solid; the hero can't enter a tile holding one (default: tree, rock, crate)
 - Hero spawn marker: add the `spawn` object to set where Play starts (one per map; adding another moves it). No spawn = map center
-- Pan and zoom (zoom snaps to whole numbers at 1× and above for crisp pixels)
+- Pan and zoom; View → Orthographic switches to a parallel (iso-like) camera
 - Dockable Scene, Assets, Hierarchy and Inspector panels with a default layout; View → Reset Layout restores it
 - View → Grid: tile outlines over the map; the menu bar shows the tile `(x, y)` and id under the mouse
-- Map objects: add, delete, duplicate, rename, drag in the scene, depth-sorted drawing
+- Map objects: add, delete, duplicate, rename, drag in the scene
 - Assets panel built from PNG sprites (tiles, objects, characters)
 - Undo/redo for every edit
 - Multiple maps: New / Open / Save / Save As, with an unsaved-changes prompt
@@ -47,14 +48,14 @@ dotnet run --project src/GameEditor.Editor
 | Shift + click (Height tool) | Lower the tile one step |
 | Right click (Scene) | Pick the tile under the cursor |
 | Right click (Assets tile or object) | Toggle Solid |
-| Middle drag | Pan (not in Play mode) |
-| Mouse wheel | Zoom toward the cursor (screen center in Play mode) |
+| Middle drag | Pan; the ground under the cursor follows it (not in Play mode) |
+| Mouse wheel | Zoom toward the cursor (around the hero in Play mode) |
 | Ctrl+Z / Ctrl+Y | Undo / Redo |
 | Ctrl+N / Ctrl+O | New / Open |
 | Ctrl+S / Ctrl+Shift+S | Save / Save As |
 | Delete / Ctrl+D | Delete / duplicate the selected object |
 | Play / Stop (menu bar) | Enter / leave Play mode |
-| Q / E | Rotate the view 90° left / right around the map center (also in Play mode; view only, not saved) |
+| Q / E | Turn the camera 90° left / right, animated (also in Play mode; view only, not saved) |
 | WASD / arrow keys | Walk the hero (Play mode), relative to the screen |
 
 Editing is disabled during Play mode. Stop restores the map and zoom exactly as they were.
@@ -65,14 +66,15 @@ Sprites live in `assets/` and are copied next to the executable on build.
 
 ```
 assets/
-  tiles/<id>_<name>.png     e.g. 0_grass.png, 6_dirt_block.png
+  tiles/<id>_<name>.png     e.g. 0_grass.png, 6_dirt_block.png (Assets panel thumbnails)
+  tiles_top/<id>_<name>.png square top face of the 3D tile box, 64×64
   objects/<name>.png        e.g. tree.png, spawn.png (hero spawn marker)
   characters/<name>.png     hero_se.png, hero_ne.png, hero_sw.png, hero_nw.png
 ```
 
-- Tile base is 64×32. Taller images (blocks) are allowed.
-- Anchor is bottom center: a tile's bottom vertex, or an object's position.
-- A tile id without an image is drawn as a flat color.
+- A tile whose `tiles/` image is taller than 64 px (a block) is drawn one step taller than its height.
+- Sprites: 64 px = 1 tile; anchor is bottom center = the object's position. Alpha must be 0 or 255 (cut out, not blended).
+- A tile id without a `tiles_top/` image is drawn as a flat color.
 - Default solid tiles for new maps: `1` water, `6` dirt block, `7` stone block.
 - Regenerate placeholders: `python tools/gen_assets.py`
 
@@ -144,13 +146,13 @@ Player ─┤                                      ^
 
 | Project | Role |
 |---|---|
-| Domain | `TileMap`, `MapObject`, `IsoMath`, solid tiles. No dependencies. |
+| Domain | `TileMap`, `MapObject`, `World3D` (3D coords, mouse-ray picking), solid tiles. No dependencies. |
 | Application | `MapEditingService`, commands + `UndoStack`, `PlaySession`, `IMapRepository` |
 | Infrastructure | `JsonMapRepository` (System.Text.Json source generation), `GameExporter` |
-| Rendering | Raylib drawing, sprite loading, shared input |
+| Rendering | `Renderer3D` (chunked terrain mesh + shaders, billboards), `OrbitCamera`, sprite loading, shared input |
 | Editor | ImGui editor app and composition root |
 | Player | Standalone game |
-| Tests | xUnit v3 tests for Domain, Application, Infrastructure |
+| Tests | xUnit v3 tests for Domain, Application, Infrastructure, atlas UVs |
 
 ## Known limitations
 

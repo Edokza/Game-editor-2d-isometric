@@ -1,3 +1,4 @@
+using System.Numerics;
 using GameEditor.Application;
 using GameEditor.Domain;
 
@@ -197,15 +198,15 @@ public class PlaySessionTests
 
     [Theory]
     [MemberData(nameof(Rotations))]
-    public void Move_W_GoesUpTheScreen_AtEveryRotation(int r)
+    public void Move_W_GoesAwayFromTheViewer_AtEveryRotation(int r)
     {
         var play = new PlaySession(new TileMap(8, 8));
-        var view = new IsoView(r, 8, 8);
-        var before = view.TileToScreen(play.Hero.X, play.Hero.Y);
-        for (int i = 0; i < 10; i++) play.Move(new(-1, -1), 1 / 60f, view); // W
-        var after = view.TileToScreen(play.Hero.X, play.Hero.Y);
-        Assert.True(after.Y < before.Y, $"{before} -> {after}");
-        Assert.Equal(before.X, after.X, 3);
+        var before = new Vector2(play.Hero.X, play.Hero.Y);
+        for (int i = 0; i < 10; i++) play.Move(new(-1, -1), 1 / 60f, r * 90); // W
+        var moved = new Vector2(play.Hero.X, play.Hero.Y) - before;
+        var toViewer = World3D.ToViewer(r * 90);
+        Assert.True(Vector2.Dot(moved, toViewer) < 0, $"{moved}");
+        Assert.Equal(0, moved.X * toViewer.Y - moved.Y * toViewer.X, 3); // no sideways drift
     }
 
     [Theory]
@@ -213,12 +214,11 @@ public class PlaySessionTests
     public void Move_SpriteFacesScreenDirection_AtEveryRotation(int r)
     {
         var play = new PlaySession(new TileMap(8, 8));
-        var view = new IsoView(r, 8, 8);
-        play.Move(new(1, -1), 1 / 60f, view); // D
+        play.Move(new(1, -1), 1 / 60f, r * 90); // D
         Assert.Equal("hero_ne", play.Hero.Sprite);
-        play.Move(new(-1, 1), 1 / 60f, view); // A
+        play.Move(new(-1, 1), 1 / 60f, r * 90); // A
         Assert.Equal("hero_sw", play.Hero.Sprite);
-        play.Move(new(1, 1), 1 / 60f, view); // S keeps the left side
+        play.Move(new(1, 1), 1 / 60f, r * 90); // S keeps the left side
         Assert.Equal("hero_sw", play.Hero.Sprite);
     }
 
